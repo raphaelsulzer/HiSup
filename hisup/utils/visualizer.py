@@ -38,7 +38,8 @@ def show_polygons(image, polys):
         plt.gca().add_patch(Patches.Polygon(polygon, fill=False, ec=color, linewidth=1.5))
         plt.fill(polygon[:,0], polygon[:, 1], color=color, alpha=0.3)
         plt.plot(polygon[:,0], polygon[:,1], color=color, marker='.')
-    
+
+    plt.savefig("output.tiff",dpi=500)
     plt.show()
 
 def save_viz(image, polys, save_path, filename):
@@ -89,10 +90,11 @@ def viz_inria(image, polygons, output_dir, file_name, alpha=0.5, linewidth=12, m
                     juncs = np.array(inter.coords[:-1])
                     plt.plot(juncs[:,0], juncs[:,1], color=poly_color, marker='.', markersize=markersize, linestyle='none')
     
-    # save_filename = os.path.join(output_dir, 'inria_viz', file_name[:-4] + '.svg')
-    # plt.savefig(save_filename, bbox_inches='tight', pad_inches=0.0)
-    # plt.clf()
+    save_filename = os.path.join(output_dir, 'inria_viz', file_name[:-4] + '.svg')
+    os.makedirs(os.path.dirname(save_filename), exist_ok=True)
+    plt.savefig(save_filename, bbox_inches='tight', pad_inches=0.0)
     plt.show()
+    # plt.clf()
 
 
 def draw_predictions_with_mask_inria(img, junctions, polys_ids, save_dir, filename):

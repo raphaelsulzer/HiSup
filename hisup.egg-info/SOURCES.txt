@@ -1,0 +1,11 @@
+LICENSE
+README.md
+setup.py
+hisup/__init__.py
+hisup/detector.py
+hisup/encoder.py
+hisup/solver.py
+hisup.egg-info/PKG-INFO
+hisup.egg-info/SOURCES.txt
+hisup.egg-info/dependency_links.txt
+hisup.egg-info/top_level.txt

@@ -1,4 +1,4 @@
-import torch
+import torch, os
 import argparse
 import numpy as np
 
@@ -17,12 +17,13 @@ def parse_args():
                         required=False,
                         type=str,
                         choices=['crowdai', 'inria'],
-                        default='crowdai',
+                        default='inria',
                         help="parameters' source")
 
     parser.add_argument("--img",
-                        required=True,
+                        required=False,
                         type=str,
+                        default="/home/rsulzer/data/AerialImageDataset/test/images/bellingham1.tif",
                         help="path to test image")
 
     args = parser.parse_args()
@@ -129,10 +130,11 @@ def inference_with_patching(cfg, model, image, device):
                             [poly[idx] for idx in juncs_index[1:]])
             polygons.append(poly_)
 
-    viz_inria(image, polygons, cfg.OUTPUT_DIR, '')
+    viz_inria(image, polygons, cfg.OUTPUT_DIR, os.path.split(cfg.input_filename)[1])
 
 
 def test(cfg, args):
+    cfg.input_filename = args.img
     device = cfg.MODEL.DEVICE
     if not torch.cuda.is_available():
         device = 'cpu'
