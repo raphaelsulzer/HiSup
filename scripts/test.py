@@ -18,7 +18,7 @@ def parse_args():
                         metavar="FILE",
                         help="path to config file",
                         type=str,
-                        default=None,
+                        default="./config-files/debug.yaml",
                         )
 
     parser.add_argument("--eval-type",
@@ -55,8 +55,8 @@ def test(cfg, args):
         model = model.eval()
 
     test_pipeline = TestPipeline(cfg, args.eval_type)
-    test_pipeline.test(model)
-    # test_pipeline.eval()
+    test_pipeline.test(model, cfg.IM_PATH)
+    test_pipeline.eval()
 
 
 if __name__ == "__main__":
@@ -66,10 +66,16 @@ if __name__ == "__main__":
     else:
         cfg.OUTPUT_DIR = 'outputs/default'
         os.makedirs(cfg.OUTPUT_DIR,exist_ok=True)
+
+    # cfg.OUTPUT_DIR = "../outputs/debug"
+    # os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
     
     cfg.merge_from_list(args.opts)
+
+    cfg.IM_PATH = './data/debug/images/'
+
     cfg.freeze()
-    
+
     output_dir = cfg.OUTPUT_DIR
     logger = setup_logger('testing', output_dir)
     logger.info(args)
@@ -79,4 +85,7 @@ if __name__ == "__main__":
         logger.info("Loaded the default configuration for testing")
 
     test(cfg, args)
+
+    # TODO: run the whole INRIA dataset again, now that the pretrained model is correctly loaded, and then submit the results
+    # to the INRIA benchmark testing to validate that I get the same results as presented in the HiSup paper.
 

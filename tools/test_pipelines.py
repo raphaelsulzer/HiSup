@@ -90,11 +90,11 @@ class TestPipeline():
         self.gt_file = ''
         self.dt_file = ''
     
-    def test(self, model):
+    def test(self, model, IM_PATH=None):
         if 'crowdai' in self.dataset_name:
             self.test_on_crowdai(model, self.dataset_name)
         elif 'inria' in self.dataset_name:
-            self.test_on_inria(model, self.dataset_name)
+            self.test_on_inria(model, self.dataset_name, IM_PATH)
 
     def eval(self):
         logger = logging.getLogger("testing")
@@ -159,11 +159,11 @@ class TestPipeline():
         self.dt_file = dt_file
         self.eval()
 
-    def test_on_inria(self, model, dataset_name):
+    def test_on_inria(self, model, dataset_name, IM_PATH):
         logger = logging.getLogger("testing")
         logger.info('Testing on {} dataset'.format(dataset_name))
 
-        IM_PATH = './data/inria/raw/test/images/'
+        # IM_PATH = './data/inria/raw/test/images/'
         if not os.path.exists(os.path.join(self.output_dir, 'seg')):
             os.makedirs(os.path.join(self.output_dir, 'seg'))
         transform = build_transform(self.cfg)
