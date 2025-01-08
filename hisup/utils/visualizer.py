@@ -76,11 +76,11 @@ def viz_inria(image, polygons, output_dir, file_name, alpha=0.5, linewidth=12, m
                         juncs = np.array(inter.coords[:-1])
                         plt.plot(juncs[:,0], juncs[:,1], color=poly_color, marker='.', markersize=markersize, linestyle='none')
         else:
-            try:
-                patch = PolygonPatch(poly.buffer(0), ec=poly_color, fc=poly_color, alpha=alpha, linewidth=linewidth)
-                plt.gca().add_patch(patch)
-            except TypeError:
-                plt.gca().add_patch(Patches.Polygon(poly.exterior.coords[:-1], fill=True, ec=poly_color, fc=poly_color, linewidth=linewidth, alpha=alpha))
+            # try:
+            #     patch = PolygonPatch(poly.buffer(0), ec=poly_color, fc=poly_color, alpha=alpha, linewidth=linewidth)
+            #     plt.gca().add_patch(patch)
+            # except TypeError:
+            #     plt.gca().add_patch(Patches.Polygon(poly.exterior.coords[:-1], fill=True, ec=poly_color, fc=poly_color, linewidth=linewidth, alpha=alpha))
             plt.gca().add_patch(Patches.Polygon(poly.exterior.coords[:-1], fill=False, ec=poly_color, linewidth=linewidth))
             juncs = np.array(poly.exterior.coords[:-1])
             plt.plot(juncs[:,0], juncs[:,1], color=poly_color, marker='.', markersize=markersize, linestyle='none')
