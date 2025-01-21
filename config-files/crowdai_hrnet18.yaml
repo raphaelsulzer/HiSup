@@ -1,5 +1,5 @@
 SOLVER:
-  IMS_PER_BATCH: 16
+  IMS_PER_BATCH: 2
   BASE_LR: 1e-4
   MAX_EPOCH: 100
   STEPS: (25,)
@@ -9,7 +9,7 @@ SOLVER:
   AMSGRAD: True
 
 DATALOADER:
-  NUM_WORKERS: 8
+  NUM_WORKERS: 4
 
 DATASETS:
   IMAGE:
@@ -25,7 +25,7 @@ DATASETS:
     HEIGHT: 300
     WIDTH: 300
   TRAIN: ("crowdai_train_small",)
-  TEST: ("crowdai_test",)
+  TEST: ("crowdai_test_small",)
 
 MODEL:
   NAME: "HRNet18v2"

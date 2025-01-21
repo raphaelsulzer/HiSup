@@ -1,10 +1,10 @@
-import os
 import os.path as osp
 
 class DatasetCatalog(object):
 
-    DATA_DIR = osp.abspath(osp.join(osp.dirname(__file__),
-                '..','..','data'))
+    # DATA_DIR = osp.abspath(osp.join(osp.dirname(__file__),
+    #             '..','..','data'))
+    DATA_DIR = "./data"
     
     DATASETS = {
         'crowdai_train_small': {
@@ -30,6 +30,18 @@ class DatasetCatalog(object):
         'inria_test': {
             'img_dir': 'coco-Aerial/val/images',
             'ann_file': 'coco-Aerial/val/annotation.json',
+        },
+        'lidarpoly_train': {
+            'img_dir': 'lidarpoly/train/images',
+            'ann_file': 'lidarpoly/annotations_train.json',
+        },
+        'lidarpoly_val': {
+            'img_dir': 'lidarpoly/val/images',
+            'ann_file': 'lidarpoly/annotations_val.json',
+        },
+        'lidarpoly_test': {
+            'img_dir': 'lidarpoly/test/images',
+            'ann_file': 'lidarpoly/annotations_test.json',
         }
     }
 
@@ -46,6 +58,8 @@ class DatasetCatalog(object):
 
         if 'train' in name:
             return dict(factory="TrainDataset",args=args)
+        if 'val' in name:
+            return dict(factory="ValDataset",args=args)
         if 'test' in name and 'ann_file' in attrs:
             return dict(factory="TestDatasetWithAnnotations",
                         args=args)

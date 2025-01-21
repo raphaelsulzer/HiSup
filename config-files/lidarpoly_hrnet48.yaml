@@ -1,5 +1,5 @@
 SOLVER:
-  IMS_PER_BATCH: 100
+  IMS_PER_BATCH: 10
   BASE_LR: 1e-4
   MAX_EPOCH: 30
   STEPS: (25,)
@@ -24,8 +24,9 @@ DATASETS:
   ORIGIN:
     HEIGHT: 300
     WIDTH: 300
-  TRAIN: ("crowdai_train",)
-  TEST: ("crowdai_test_small",)
+  TRAIN: ("lidarpoly_train",)
+  VAL: ("lidarpoly_val",)
+  TEST: ("lidarpoly_test",)
 
 MODEL:
   NAME: "HRNet48v2"
@@ -38,4 +39,4 @@ MODEL:
     loss_afm : 0.1
     loss_remask : 1.0
 
-OUTPUT_DIR: "./outputs/crowdai_hrnet48"
+OUTPUT_DIR: "./outputs/lidarpoly_hrnet48"

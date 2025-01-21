@@ -14,7 +14,7 @@ from tools.evaluation import coco_eval, boundary_eval, polis_eval
 from hisup.utils.comm import to_single_device
 from hisup.utils.polygon import generate_polygon
 from hisup.utils.visualizer import viz_inria
-from hisup.dataset import build_test_dataset
+from hisup.dataset import build_val_dataset, build_test_dataset
 from hisup.dataset.build import build_transform
 from hisup.utils.polygon import juncs_in_bbox
 
@@ -80,21 +80,37 @@ def generate_coco_mask(mask, img_id):
 
 
 class TestPipeline():
-    def __init__(self, cfg, eval_type='coco_iou'):
+    def __init__(self, cfg, eval_type='coco_iou', split='test'):
         self.cfg = cfg
         self.device = cfg.MODEL.DEVICE
         self.output_dir = cfg.OUTPUT_DIR
-        self.dataset_name = cfg.DATASETS.TEST[0]
+        if split == 'val':
+            self.dataset_name = cfg.DATASETS.VAL[0]
+        elif split == 'test':
+            self.dataset_name = cfg.DATASETS.TEST[0]
+        elif split == 'train':
+            self.dataset_name = cfg.DATASETS.TRAIN[0]
+        else:
+            raise ValueError(f'{split} is not a valid split.')
         self.eval_type = eval_type
         
         self.gt_file = ''
         self.dt_file = ''
     
-    def test(self, model, IM_PATH=None):
+    def test(self, model):
         if 'crowdai' in self.dataset_name:
             self.test_on_crowdai(model, self.dataset_name)
         elif 'inria' in self.dataset_name:
-            self.test_on_inria(model, self.dataset_name, IM_PATH)
+            self.test_on_inria(model, self.dataset_name)
+        elif 'lidarpoly' in self.dataset_name:
+            if 'test' in self.dataset_name:
+                self.test_on_lidarpoly(model, self.dataset_name)
+            elif 'val' in self.dataset_name:
+                self.val_on_lidarpoly(model, self.dataset_name)
+            else:
+                raise ValueError(f'{self.dataset_name} is not a valid dataset')
+        else:
+            raise ValueError(f'{self.dataset_name} is not a valid dataset')
 
     def eval(self):
         logger = logging.getLogger("testing")
@@ -149,15 +165,127 @@ class TestPipeline():
         self.dt_file = dt_file
         self.eval()
 
-        dt_file = osp.join(self.output_dir,'{}_mask.json'.format(dataset_name))
+        if not self.eval_type == 'polis':
+            dt_file = osp.join(self.output_dir,'{}_mask.json'.format(dataset_name))
+            logger.info('Writing the results of the {} dataset into {}'.format(dataset_name,
+                        dt_file))
+            with open(dt_file,'w') as _out:
+                json.dump(mask_results,_out)
+
+            self.gt_file = gt_file
+            self.dt_file = dt_file
+            self.eval()
+
+
+    def val_on_lidarpoly(self, model, dataset_name):
+        logger = logging.getLogger("testing")
+        logger.info('Testing on {} dataset'.format(dataset_name))
+
+        results = []
+        mask_results = []
+        test_dataset, gt_file = build_val_dataset(self.cfg)
+        for i, (images, annotations) in enumerate(tqdm(test_dataset)):
+            with torch.no_grad():
+                output, _ = model(images.to(self.device), to_single_device(annotations, self.device))
+                output = to_single_device(output, 'cpu')
+
+            batch_size = images.size(0)
+            batch_scores = output['scores']
+            batch_polygons = output['polys_pred']
+            batch_masks = output['mask_pred']
+
+            for b in range(batch_size):
+                filename = annotations[b]['filename']
+                img_id = int(filename[:-4])
+
+                scores = batch_scores[b]
+                polys = batch_polygons[b]
+                mask_pred = batch_masks[b]
+
+                image_result = generate_coco_ann(polys, scores, img_id)
+                if len(image_result) != 0:
+                    results.extend(image_result)
+
+                image_masks = generate_coco_mask(mask_pred, img_id)
+                if len(image_masks) != 0:
+                    mask_results.extend(image_masks)
+
+        dt_file = osp.join(self.output_dir, '{}.json'.format(dataset_name))
         logger.info('Writing the results of the {} dataset into {}'.format(dataset_name,
-                    dt_file))
-        with open(dt_file,'w') as _out:
-            json.dump(mask_results,_out)
+                                                                           dt_file))
+        with open(dt_file, 'w') as _out:
+            json.dump(results, _out)
 
         self.gt_file = gt_file
         self.dt_file = dt_file
         self.eval()
+
+        if not self.eval_type == 'polis':
+            dt_file = osp.join(self.output_dir, '{}_mask.json'.format(dataset_name))
+            logger.info('Writing the results of the {} dataset into {}'.format(dataset_name,
+                                                                               dt_file))
+            with open(dt_file, 'w') as _out:
+                json.dump(mask_results, _out)
+
+            self.gt_file = gt_file
+            self.dt_file = dt_file
+            self.eval()
+
+
+
+    def test_on_lidarpoly(self, model, dataset_name):
+        logger = logging.getLogger("testing")
+        logger.info('Testing on {} dataset'.format(dataset_name))
+
+        results = []
+        mask_results = []
+        test_dataset, gt_file = build_test_dataset(self.cfg)
+        for i, (images, annotations) in enumerate(tqdm(test_dataset)):
+            with torch.no_grad():
+                output, _ = model(images.to(self.device), to_single_device(annotations, self.device))
+                output = to_single_device(output, 'cpu')
+
+            batch_size = images.size(0)
+            batch_scores = output['scores']
+            batch_polygons = output['polys_pred']
+            batch_masks = output['mask_pred']
+
+            for b in range(batch_size):
+                filename = annotations[b]['filename']
+                img_id = int(filename[:-4])
+
+                scores = batch_scores[b]
+                polys = batch_polygons[b]
+                mask_pred = batch_masks[b]
+
+                image_result = generate_coco_ann(polys, scores, img_id)
+                if len(image_result) != 0:
+                    results.extend(image_result)
+
+                image_masks = generate_coco_mask(mask_pred, img_id)
+                if len(image_masks) != 0:
+                    mask_results.extend(image_masks)
+
+        dt_file = osp.join(self.output_dir, '{}.json'.format(dataset_name))
+        logger.info('Writing the results of the {} dataset into {}'.format(dataset_name,
+                                                                           dt_file))
+        with open(dt_file, 'w') as _out:
+            json.dump(results, _out)
+
+        self.gt_file = gt_file
+        self.dt_file = dt_file
+        self.eval()
+
+        if not self.eval_type == 'polis':
+            dt_file = osp.join(self.output_dir, '{}_mask.json'.format(dataset_name))
+            logger.info('Writing the results of the {} dataset into {}'.format(dataset_name,
+                                                                               dt_file))
+            with open(dt_file, 'w') as _out:
+                json.dump(mask_results, _out)
+
+            self.gt_file = gt_file
+            self.dt_file = dt_file
+            self.eval()
 
     def test_on_inria(self, model, dataset_name, IM_PATH):
         logger = logging.getLogger("testing")

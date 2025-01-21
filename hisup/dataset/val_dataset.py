@@ -7,9 +7,9 @@ from PIL import Image
 from shapely.geometry import Polygon
 from torch.utils.data.dataloader import default_collate
 
-class TestDatasetWithAnnotations(dset.coco.CocoDetection):
+class ValDataset(dset.coco.CocoDetection):
     def __init__(self, root, ann_file, transform = None):
-        super(TestDatasetWithAnnotations, self).__init__(root, ann_file)
+        super(ValDataset, self).__init__(root, ann_file)
 
         self.root = root
         self.ids = sorted(self.ids)
@@ -17,7 +17,7 @@ class TestDatasetWithAnnotations(dset.coco.CocoDetection):
         self._transforms = transform
     
     def __getitem__(self, idx):
-        img, annos = super(TestDatasetWithAnnotations, self).__getitem__(idx)
+        img, annos = super(ValDataset, self).__getitem__(idx)
         image = np.array(img).astype(float)
         img_info = self.get_img_info(idx)
         width, height = img_info['width'], img_info['height']

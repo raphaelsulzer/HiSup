@@ -18,13 +18,20 @@ def parse_args():
                         metavar="FILE",
                         help="path to config file",
                         type=str,
-                        default="./config-files/debug.yaml",
+                        default="./config-files/lidarpoly_hrnet48.yaml",
+                        )
+
+    parser.add_argument("--split",
+                        metavar=str,
+                        help="train, val or test split",
+                        type=str,
+                        default="val",
                         )
 
     parser.add_argument("--eval-type",
                         type=str,
                         help="evalutation type for the test results",
-                        default="coco_iou",
+                        default="polis",
                         choices=["coco_iou",  "boundary_iou", "polis"]
                         )
 
@@ -54,9 +61,9 @@ def test(cfg, args):
         _ = checkpointer.load()        
         model = model.eval()
 
-    test_pipeline = TestPipeline(cfg, args.eval_type)
-    test_pipeline.test(model, cfg.IM_PATH)
-    test_pipeline.eval()
+    test_pipeline = TestPipeline(cfg, args.eval_type, args.split)
+    test_pipeline.test(model)
+    # test_pipeline.eval()
 
 
 if __name__ == "__main__":
@@ -72,11 +79,12 @@ if __name__ == "__main__":
     
     cfg.merge_from_list(args.opts)
 
-    cfg.IM_PATH = './data/debug/images/'
+    # cfg.IM_PATH = './data/debug/images/'
 
     cfg.freeze()
 
     output_dir = cfg.OUTPUT_DIR
+    os.makedirs(output_dir, exist_ok=True)
     logger = setup_logger('testing', output_dir)
     logger.info(args)
     if args.config_file is not None:
@@ -85,7 +93,4 @@ if __name__ == "__main__":
         logger.info("Loaded the default configuration for testing")
 
     test(cfg, args)
-
-    # TODO: run the whole INRIA dataset again, now that the pretrained model is correctly loaded, and then submit the results
-    # to the INRIA benchmark testing to validate that I get the same results as presented in the HiSup paper.
 
