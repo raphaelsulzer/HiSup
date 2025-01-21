@@ -18,13 +18,20 @@ def parse_args():
                         metavar="FILE",
                         help="path to config file",
                         type=str,
-                        default=None,
+                        default="./config-files/lidarpoly_hrnet48.yaml",
+                        )
+
+    parser.add_argument("--split",
+                        metavar=str,
+                        help="train, val or test split",
+                        type=str,
+                        default="val",
                         )
 
     parser.add_argument("--eval-type",
                         type=str,
                         help="evalutation type for the test results",
-                        default="coco_iou",
+                        default="polis",
                         choices=["coco_iou",  "boundary_iou", "polis"]
                         )
 
@@ -54,7 +61,7 @@ def test(cfg, args):
         _ = checkpointer.load()        
         model = model.eval()
 
-    test_pipeline = TestPipeline(cfg, args.eval_type)
+    test_pipeline = TestPipeline(cfg, args.eval_type, args.split)
     test_pipeline.test(model)
     # test_pipeline.eval()
 
@@ -66,11 +73,18 @@ if __name__ == "__main__":
     else:
         cfg.OUTPUT_DIR = 'outputs/default'
         os.makedirs(cfg.OUTPUT_DIR,exist_ok=True)
+
+    # cfg.OUTPUT_DIR = "../outputs/debug"
+    # os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
     
     cfg.merge_from_list(args.opts)
+
+    # cfg.IM_PATH = './data/debug/images/'
+
     cfg.freeze()
-    
+
     output_dir = cfg.OUTPUT_DIR
+    os.makedirs(output_dir, exist_ok=True)
     logger = setup_logger('testing', output_dir)
     logger.info(args)
     if args.config_file is not None:

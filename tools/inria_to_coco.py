@@ -299,8 +299,7 @@ if __name__ == '__main__':
     val_set = [str(i) for i in range(1, 6)]
 
     output_im_train = os.path.join(save_path, 'images')
-    if not os.path.exists(output_im_train):
-        os.makedirs(output_im_train)
+    os.makedirs(output_im_train, exist_ok=True)
 
     patch_width = 725
     patch_height = 725

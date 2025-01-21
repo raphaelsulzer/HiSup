@@ -3,7 +3,7 @@ import torch
 from .transforms import *
 from . import train_dataset
 from hisup.config.paths_catalog import DatasetCatalog
-from . import test_dataset
+from . import val_dataset, test_dataset
 
 
 def build_transform(cfg):
@@ -69,6 +69,31 @@ def build_train_dataset_multi(cfg):
     dataset = factory(**args)
     return dataset
 
+
+def build_val_dataset(cfg):
+    transforms = Compose(
+        [ResizeImage(cfg.DATASETS.IMAGE.HEIGHT,
+                     cfg.DATASETS.IMAGE.WIDTH),
+         ToTensor(),
+         Normalize(cfg.DATASETS.IMAGE.PIXEL_MEAN,
+                   cfg.DATASETS.IMAGE.PIXEL_STD,
+                   cfg.DATASETS.IMAGE.TO_255)
+         ]
+    )
+
+    name = cfg.DATASETS.VAL[0]
+    dargs = DatasetCatalog.get(name)
+    factory = getattr(val_dataset, dargs['factory'])
+    args = dargs['args']
+    args['transform'] = transforms
+    dataset = factory(**args)
+    dataset = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=cfg.SOLVER.IMS_PER_BATCH,
+        collate_fn=dataset.collate_fn,
+        num_workers=cfg.DATALOADER.NUM_WORKERS,
+    )
+    return dataset, dargs['args']['ann_file']
 
 def build_test_dataset(cfg):
     transforms = Compose(

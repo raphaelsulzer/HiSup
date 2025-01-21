@@ -4,7 +4,6 @@ import os.path as osp
 import torchvision.datasets as dset
 
 from PIL import Image
-from pycocotools.coco import COCO
 from shapely.geometry import Polygon
 from torch.utils.data.dataloader import default_collate
 

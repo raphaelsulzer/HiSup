@@ -14,7 +14,9 @@ def build_hrnet48(cfg):
     model = HRNet48v2(cfg,
                       head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
                       num_class = num_class)
-    pretrained = 'hisup/backbones/hrnet_imagenet/hrnetv2_w48_imagenet_pretrained.pth'
+    pretrained = 'backbones/hrnet_imagenet/hrnetv2_w48_imagenet_pretrained.pth'
+    if not os.path.isfile(pretrained):
+        raise FileNotFoundError(pretrained)
     model.init_weights(pretrained=pretrained)
     print('INFO:build hrnet-w48-v2 backbone')
     return model
@@ -29,6 +31,8 @@ def build_hrnet32(cfg):
                       num_class = num_class)
 
     pretrained = 'hisup/backbones/hrnet_imagenet/hrnetv2_w32_imagenet_pretrained.pth'
+    if not os.path.isfile(pretrained):
+        raise FileNotFoundError(pretrained)
     model.init_weights(pretrained=pretrained)
     print('INFO:build hrnet-w32-v2 backbone')
     return model
@@ -43,6 +47,8 @@ def build_hrnet18(cfg):
                       num_class=num_class)
 
     pretrained = 'hisup/backbones/hrnet_imagenet/hrnetv2_w18_imagenet_pretrained.pth'
+    if not os.path.isfile(pretrained):
+        raise FileNotFoundError(pretrained)
     model.init_weights(pretrained=pretrained)
     print('INFO:build hrnet-w18-v2 backbone')
 
