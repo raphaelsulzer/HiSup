@@ -9,5 +9,7 @@ data/*
 exp/*
 **/pretrained_models/*
 
+backbones/*
+
 **/*.pyc
 **/*.so
