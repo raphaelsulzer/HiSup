@@ -19,6 +19,7 @@ def parse_args():
                         help="path to config file",
                         type=str,
                         default="./config-files/lidarpoly_hrnet48.yaml",
+                        # default="./config-files/crowdai_hrnet48.yaml",
                         )
 
     parser.add_argument("--split",
@@ -26,6 +27,7 @@ def parse_args():
                         help="train, val or test split",
                         type=str,
                         default="val",
+                        # default="test",
                         )
 
     parser.add_argument("--eval-type",
