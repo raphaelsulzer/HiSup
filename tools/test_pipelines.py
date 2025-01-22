@@ -292,7 +292,7 @@ class TestPipeline():
         logger = logging.getLogger("testing")
         logger.info('Testing on {} dataset'.format(dataset_name))
 
-        # IM_PATH = './data/inria/raw/test/images/'
+
         if not os.path.exists(os.path.join(self.output_dir, 'seg')):
             os.makedirs(os.path.join(self.output_dir, 'seg'))
         transform = build_transform(self.cfg)
