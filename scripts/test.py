@@ -3,7 +3,7 @@ import argparse
 import logging
 
 from hisup.config import cfg
-from hisup.detector import BuildingDetector
+from hisup.detector import BuildingDetector, get_pretrained_model
 from hisup.utils.logger import setup_logger
 from hisup.utils.checkpoint import DetectronCheckpointer
 from tools.test_pipelines import TestPipeline
@@ -30,6 +30,12 @@ def parse_args():
                         # default="test",
                         )
 
+    parser.add_argument("--load_pretrained",
+                        help="Load pretrained inria model",
+                        type=bool,
+                        default=True,
+                        )
+
     parser.add_argument("--eval-type",
                         type=str,
                         help="evalutation type for the test results",
@@ -51,16 +57,20 @@ def parse_args():
 def test(cfg, args):
     logger = logging.getLogger("testing")
     device = cfg.MODEL.DEVICE
-    model = BuildingDetector(cfg, test=True)
+    if not args.load_pretrained:
+        model = BuildingDetector(cfg, test=True)
+    else:
+        logger.info("Loading pretrained inria model")
+        model = get_pretrained_model(cfg, "inria", device, pretrained=True)
     model = model.to(device)
-
-    if args.config_file is not None:
-        checkpointer = DetectronCheckpointer(cfg,
-                                         model,
-                                         save_dir=cfg.OUTPUT_DIR,
-                                         save_to_disk=True,
-                                         logger=logger)
-        _ = checkpointer.load()        
+    if not args.load_pretrained:
+        if args.config_file is not None:
+            checkpointer = DetectronCheckpointer(cfg,
+                                             model,
+                                             save_dir=cfg.OUTPUT_DIR,
+                                             save_to_disk=True,
+                                             logger=logger)
+            _ = checkpointer.load()
         model = model.eval()
 
     test_pipeline = TestPipeline(cfg, args.eval_type, args.split)

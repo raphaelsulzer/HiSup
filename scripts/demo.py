@@ -23,7 +23,7 @@ def parse_args():
     parser.add_argument("--img",
                         required=False,
                         type=str,
-                        default="/home/rsulzer/data/AerialImageDataset/test/images/bellingham1.tif",
+                        default="/home/rsulzer/data/LIDAR_POLY/Switzerland/processed/images/val/image0_Switzerland_val.tif",
                         help="path to test image")
 
     args = parser.parse_args()

@@ -56,7 +56,7 @@ def save_viz(image, polys, save_path, filename):
     plt.clf()
 
 
-def viz_inria(image, polygons, output_dir, file_name, alpha=0.5, linewidth=12, markersize=45):
+def viz_inria(image, polygons, alpha=0.5, linewidth=12, markersize=45, outfile=None):
     plt.rcParams['figure.figsize'] = (500,500)
     plt.rcParams['figure.dpi'] = 10
     plt.axis('off')
@@ -89,10 +89,10 @@ def viz_inria(image, polygons, output_dir, file_name, alpha=0.5, linewidth=12, m
                     plt.gca().add_patch(Patches.Polygon(inter.coords[:-1], fill=False, ec=poly_color, linewidth=linewidth))
                     juncs = np.array(inter.coords[:-1])
                     plt.plot(juncs[:,0], juncs[:,1], color=poly_color, marker='.', markersize=markersize, linestyle='none')
-    
-    save_filename = os.path.join(output_dir, 'inria_viz', file_name[:-4] + '.svg')
-    os.makedirs(os.path.dirname(save_filename), exist_ok=True)
-    plt.savefig(save_filename, bbox_inches='tight', pad_inches=0.0)
+
+    if outfile is not None:
+        os.makedirs(os.path.dirname(outfile), exist_ok=True)
+        plt.savefig(outfile, bbox_inches='tight', pad_inches=0.0)
     plt.show()
     # plt.clf()
 

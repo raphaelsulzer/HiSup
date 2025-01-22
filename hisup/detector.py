@@ -228,7 +228,7 @@ class BuildingDetector(nn.Module):
 def get_pretrained_model(cfg, dataset, device, pretrained=True):
     PRETRAINED = {
         'crowdai': 'https://github.com/XJKunnn/pretrained_model/releases/download/pretrained_model/crowdai_hrnet48_e100.pth',
-        'inria': 'https://github.com/XJKunnn/pretrained_model/releases/download/pretrained_model/inria_hrnet48_e5.pth'
+        'inria': 'https://github.com/XJKunnn/pretrained_model/releases/download/pretrained_model/inria_hrnet48_e5.pth',
     }
 
     model = BuildingDetector(cfg, test=True)

@@ -1,5 +1,5 @@
 SOLVER:
-  IMS_PER_BATCH: 1
+  IMS_PER_BATCH: 8
   BASE_LR: 1e-4
   MAX_EPOCH: 30
   STEPS: (25,)
@@ -13,8 +13,8 @@ DATALOADER:
 
 DATASETS:
   IMAGE:
-    PIXEL_MEAN: [109.730, 103.832, 98.681]
-    PIXEL_STD: [22.275, 22.124, 23.229]
+    PIXEL_MEAN: [109.54834, 114.86825, 102.69644]
+    PIXEL_STD: [52.80287, 48.31333, 46.67280]
     TO_255: True
     HEIGHT: 512
     WIDTH: 512
@@ -22,8 +22,8 @@ DATASETS:
     HEIGHT: 128
     WIDTH: 128
   ORIGIN:
-    HEIGHT: 300
-    WIDTH: 300
+    HEIGHT: 512
+    WIDTH: 512
   TRAIN: ("lidarpoly_train",)
   VAL: ("lidarpoly_val",)
   TEST: ("lidarpoly_test",)

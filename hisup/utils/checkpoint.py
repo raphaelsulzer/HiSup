@@ -55,6 +55,7 @@ class Checkpointer(object):
             f = self.get_checkpoint_file()
         if not f:
             # no checkpoint could be found
+            self.logger.warning("No checkpoint found!!")
             raise FileExistsError(f)
             return {}
         self.logger.info("Loading checkpoint from {}".format(f))
