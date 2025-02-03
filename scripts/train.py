@@ -36,7 +36,7 @@ def parse_args():
                         metavar="FILE",
                         help="path to config file",
                         type=str,
-                        default=None,
+                        default="./config-files/lidarpoly_hrnet48.yaml",
                         )
     
     parser.add_argument("--clean",
@@ -138,8 +138,8 @@ def train(cfg):
                     meters.delimiter.join(
                         [
                             "eta: {eta}",
-                            "epoch: {epoch}",
-                            "iter: {iter}",
+                            "epoch: {epoch}/{maxepoch}",
+                            "iter: {iter}/{maxiter}",
                             "{meters}",
                             "lr: {lr:.6f}",
                             "max mem: {memory:.0f}\n",
@@ -147,15 +147,21 @@ def train(cfg):
                     ).format(
                         eta=eta_string,
                         epoch=epoch,
+                        maxepoch=arguments['max_epoch'],
                         iter=it,
+                        maxiter=len(train_dataset),
                         meters=str(meters),
                         lr=optimizer.param_groups[0]["lr"],
                         memory=torch.cuda.max_memory_allocated() / 1024.0 / 1024.0,
                     )
                 )
-        
+
+        logger.info(f"Save model after epoch {epoch} to {os.path.join(cfg.OUTPUT_DIR,'model_{:05d}'.format(epoch))}")
         checkpointer.save('model_{:05d}'.format(epoch))
         scheduler.step()
+
+        # TODO:
+        # implement a validation run with the just saved model here
     
     total_training_time = time.time() - start_training_time
     total_time_str = str(datetime.timedelta(seconds=total_training_time))

@@ -5,7 +5,7 @@ from .hrnet18v2 import HighResolutionNet as HRNet18v2
 from .multi_task_head import MultitaskHead
 from .resnetunet101 import UNetResNetBackbone as ResNetUNet
 import os
-
+import logging
 @MODELS.register("HRNet48v2")
 def build_hrnet48(cfg):
     head_size = cfg.MODEL.HEAD_SIZE
@@ -15,8 +15,11 @@ def build_hrnet48(cfg):
                       head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
                       num_class = num_class)
     pretrained = 'backbones/hrnet_imagenet/hrnetv2_w48_imagenet_pretrained.pth'
+    pretrained = os.path.abspath(pretrained)
     if not os.path.isfile(pretrained):
         raise FileNotFoundError(pretrained)
+    else:
+        print(f"Loading pretrained model from {pretrained}")
     model.init_weights(pretrained=pretrained)
     print('INFO:build hrnet-w48-v2 backbone')
     return model

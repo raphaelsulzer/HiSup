@@ -2,6 +2,7 @@ import cv2
 import random
 import os.path as osp
 import numpy as np
+import os
 
 from skimage import io
 from pycocotools.coco import COCO
@@ -18,6 +19,10 @@ def affine_transform(pt, t):
 class TrainDataset(Dataset):
     def __init__(self, root, ann_file, transform=None, rotate_f=None):
         self.root = root
+
+        self.ann_file = os.path.abspath(ann_file)
+        if not os.path.isfile(self.ann_file):
+            raise FileNotFoundError(self.ann_file)
 
         self.coco = COCO(ann_file)
         images_id = self.coco.getImgIds()
