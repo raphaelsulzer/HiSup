@@ -32,15 +32,15 @@ class DatasetCatalog(object):
             'ann_file': 'coco-Aerial/val/annotation.json',
         },
         'lidarpoly_train': {
-            'img_dir': 'lidarpoly/train/images',
+            'img_dir': 'lidarpoly/images/train',
             'ann_file': 'lidarpoly/annotations_train.json',
         },
         'lidarpoly_val': {
-            'img_dir': 'lidarpoly/val/images',
+            'img_dir': 'lidarpoly/images/val',
             'ann_file': 'lidarpoly/annotations_val.json',
         },
         'lidarpoly_test': {
-            'img_dir': 'lidarpoly/test/images',
+            'img_dir': 'lidarpoly/images/test',
             'ann_file': 'lidarpoly/annotations_test.json',
         }
     }

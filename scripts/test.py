@@ -39,7 +39,7 @@ def parse_args():
     parser.add_argument("--eval-type",
                         type=str,
                         help="evalutation type for the test results",
-                        default="polis",
+                        default="ciou",
                         choices=["coco_iou",  "boundary_iou", "polis"]
                         )
 

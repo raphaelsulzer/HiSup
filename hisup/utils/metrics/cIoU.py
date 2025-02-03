@@ -87,7 +87,7 @@ def compute_IoU_cIoU(input_json, gti_annotations):
         mask = mask != 0
 
         ps = 1 - np.abs(N - N_GT) / (N + N_GT + 1e-9)
-        iou = calc_IoU(mask, mask_gti)
+        iou = calc_IoU(mask, mask_gt)
         list_iou.append(iou)
         list_ciou.append(iou * ps)
         pss.append(ps)

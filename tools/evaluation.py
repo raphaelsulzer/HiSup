@@ -1,4 +1,5 @@
 import argparse
+import os
 
 from multiprocess import Pool
 from pycocotools.coco import COCO
@@ -8,6 +9,7 @@ from boundary_iou.coco_instance_api.cocoeval import COCOeval as BCOCOeval
 from hisup.utils.metrics.polis import PolisEval
 from hisup.utils.metrics.angle_eval import ContourEval
 from hisup.utils.metrics.cIoU import compute_IoU_cIoU
+import logging
 
 def coco_eval(annFile, resFile):
     type=1
@@ -53,14 +55,24 @@ def max_angle_error_eval(annFile, resFile):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--gt-file", default="")
-    parser.add_argument("--dt-file", default="")
-    parser.add_argument("--eval-type", default="coco_iou", choices=["coco_iou", "boundary_iou", "polis", "angle", "ciou"])
+    parser.add_argument("--gt-file", default="/home/rsulzer/data/LIDAR_POLY/annotations_val.json")
+    parser.add_argument("--dt-file", default="/home/rsulzer/python/HiSup/outputs/lidarpoly_hrnet48/lidarpoly_val.json")
+    parser.add_argument("--eval-type", default="ciou", choices=["coco_iou", "boundary_iou", "polis", "angle", "ciou"])
     args = parser.parse_args()
 
     eval_type = args.eval_type
     gt_file = args.gt_file
     dt_file = args.dt_file
+
+    print("GT file: {}".format(gt_file))
+    print("Pred file: {}".format(dt_file))
+
+    if not os.path.isfile(gt_file):
+        raise FileExistsError("GT file {} does not exist".format(gt_file))
+
+    if not os.path.isfile(dt_file):
+        raise FileExistsError("Pred file {} does not exist".format(dt_file))
+
     if eval_type == 'coco_iou':
         coco_eval(gt_file, dt_file)
     elif eval_type == 'boundary_iou':

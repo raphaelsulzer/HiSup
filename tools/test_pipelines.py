@@ -11,6 +11,8 @@ from PIL import Image
 from tqdm import tqdm
 from skimage import io
 from tools.evaluation import coco_eval, boundary_eval, polis_eval
+
+from hisup.utils.metrics.cIoU import compute_IoU_cIoU
 from hisup.utils.comm import to_single_device
 from hisup.utils.polygon import generate_polygon
 from hisup.utils.visualizer import viz_inria
@@ -121,6 +123,11 @@ class TestPipeline():
             boundary_eval(self.gt_file, self.dt_file)
         elif self.eval_type == 'polis':
             polis_eval(self.gt_file, self.dt_file)
+        elif self.eval_type == 'ciou':
+            compute_IoU_cIoU(self.dt_file, self.gt_file)
+        else:
+            raise RuntimeError('please choose a correct type from \
+                                ["coco_iou", "boundary_iou", "polis", "angle", "ciou"]')
 
     def test_on_crowdai(self, model, dataset_name):
         logger = logging.getLogger("testing")
@@ -179,11 +186,13 @@ class TestPipeline():
 
     def val_on_lidarpoly(self, model, dataset_name):
         logger = logging.getLogger("testing")
-        logger.info('Testing on {} dataset'.format(dataset_name))
+        logger.info('Validation on {} dataset'.format(dataset_name))
 
         results = []
         mask_results = []
         test_dataset, gt_file = build_val_dataset(self.cfg)
+        gt_file = osp.abspath(gt_file)
+        logger.info(f"Build validation dataset from {gt_file}")
         for i, (images, annotations) in enumerate(tqdm(test_dataset)):
             with torch.no_grad():
                 output, _ = model(images.to(self.device), to_single_device(annotations, self.device))
@@ -212,6 +221,7 @@ class TestPipeline():
                     mask_results.extend(image_masks)
 
         dt_file = osp.join(self.output_dir, '{}.json'.format(dataset_name))
+        dt_file = osp.abspath(dt_file)
         logger.info('Writing the results of the {} dataset into {}'.format(dataset_name,
                                                                            dt_file))
         with open(dt_file, 'w') as _out:
@@ -221,17 +231,18 @@ class TestPipeline():
         self.dt_file = dt_file
         self.eval()
 
-        if not self.eval_type == 'polis':
-            dt_file = osp.join(self.output_dir, '{}_mask.json'.format(dataset_name))
-            logger.info('Writing the results of the {} dataset into {}'.format(dataset_name,
-                                                                               dt_file))
-            with open(dt_file, 'w') as _out:
-                json.dump(mask_results, _out)
-
-            self.gt_file = gt_file
-            self.dt_file = dt_file
-            self.eval()
-
+        #############################################
+        ### evaluation with predicted pixel masks ###
+        #############################################
+        # dt_file = osp.join(self.output_dir, '{}_mask.json'.format(dataset_name))
+        # logger.info('Writing the results of the {} dataset into {}'.format(dataset_name,
+        #                                                                    dt_file))
+        # with open(dt_file, 'w') as _out:
+        #     json.dump(mask_results, _out)
+        #
+        # self.gt_file = gt_file
+        # self.dt_file = dt_file
+        # self.eval()
 
 
     def test_on_lidarpoly(self, model, dataset_name):
@@ -277,16 +288,18 @@ class TestPipeline():
         self.dt_file = dt_file
         self.eval()
 
-        if not self.eval_type == 'polis':
-            dt_file = osp.join(self.output_dir, '{}_mask.json'.format(dataset_name))
-            logger.info('Writing the results of the {} dataset into {}'.format(dataset_name,
-                                                                               dt_file))
-            with open(dt_file, 'w') as _out:
-                json.dump(mask_results, _out)
-
-            self.gt_file = gt_file
-            self.dt_file = dt_file
-            self.eval()
+        #############################################
+        ### evaluation with predicted pixel masks ###
+        #############################################
+        # dt_file = osp.join(self.output_dir, '{}_mask.json'.format(dataset_name))
+        # logger.info('Writing the results of the {} dataset into {}'.format(dataset_name,
+        #                                                                    dt_file))
+        # with open(dt_file, 'w') as _out:
+        #     json.dump(mask_results, _out)
+        #
+        # self.gt_file = gt_file
+        # self.dt_file = dt_file
+        # self.eval()
 
     def test_on_inria(self, model, dataset_name, IM_PATH):
         logger = logging.getLogger("testing")
