@@ -95,9 +95,14 @@ def compute_IoU_cIoU(input_json, gti_annotations):
         bar.set_description("iou: %2.4f, c-iou: %2.4f, ps:%2.4f" % (np.mean(list_iou), np.mean(list_ciou), np.mean(pss)))
         bar.refresh()
 
+    iou = np.mean(list_iou)
+    ciou = np.mean(list_ciou)
+
     print("Done!")
-    print("Mean IoU: ", np.mean(list_iou))
-    print("Mean C-IoU: ", np.mean(list_ciou))
+    print("Mean IoU: ", iou)
+    print("Mean C-IoU: ", ciou)
+
+    return iou, ciou
 
 
 

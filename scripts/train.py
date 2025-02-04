@@ -6,6 +6,8 @@ import random
 import numpy as np
 import datetime
 import wandb
+import os.path as osp
+import json
 
 from hisup.config import cfg
 from hisup.detector import BuildingDetector
@@ -16,9 +18,14 @@ from hisup.utils.logger import setup_logger
 from hisup.utils.miscellaneous import save_config
 from hisup.utils.metric_logger import MetricLogger
 from hisup.utils.checkpoint import DetectronCheckpointer
+from hisup.utils.metrics.cIoU import compute_IoU_cIoU
+
+from tools.test_pipelines import generate_coco_ann
 
 import torch
 torch.multiprocessing.set_sharing_strategy('file_system')
+
+from tqdm import tqdm
 
 class LossReducer(object):
     def __init__(self, cfg):
@@ -113,30 +120,48 @@ def log_loss(meters,epoch_size,max_epoch,epoch,it,maxiter,learning_rate):
 
 
 
-def validation(model,val_dataset,loss_reducer,device):
+def validation(model,val_dataset,device,outfile,gtfile):
 
-    # model.eval()
+    model.eval()
+    results = []
+    iou = 0.0; ciou = 0.0
+    for it, (images, annotations) in enumerate(tqdm(val_dataset, desc="Validation")):
+        with torch.no_grad():
 
-    ### Validation
-    meters_val = MetricLogger("Val")
+            images = images.to(device)
+            annotations = to_single_device(annotations, device)
+            output, _ = model(images, annotations)
+            output = to_single_device(output, 'cpu')
 
+            batch_size = images.size(0)
+            batch_scores = output['scores']
+            batch_polygons = output['polys_pred']
 
-    for it, (images, annotations) in enumerate(val_dataset):
-        # with torch.no_grad():
+        for b in range(batch_size):
+            filename = annotations[b]['filename']
+            # img_id = int(filename[:-4])
+            img_id = int(filename.split('_')[0][5:])
 
-        images = images.to(device)
-        annotations = to_single_device(annotations, device)
+            scores = batch_scores[b]
+            polys = batch_polygons[b]
 
-        loss_dict, _ = model(images, annotations)
-        total_loss = loss_reducer(loss_dict)
+            image_result = generate_coco_ann(polys, scores, img_id)
+            if len(image_result) != 0:
+                results.extend(image_result)
 
-        loss_dict_reduced = {k: v.item() for k, v in loss_dict.items()}
-        loss_reduced = total_loss.item()
-        meters_val.update(loss=loss_reduced, **loss_dict_reduced)
+    if len(results):
+        logger.info(f'Writing validation results to {outfile}')
+        with open(outfile, 'w') as _out:
+            json.dump(results, _out)
 
+        iou, ciou = compute_IoU_cIoU(outfile,gtfile)
+    else:
+        logger.info(f"No polygons predicted")
 
 
     model.train()
+
+    return iou, ciou
 
 
 
@@ -147,7 +172,8 @@ def train(cfg):
     model = model.to(device)
 
     train_dataset = build_train_dataset(cfg)
-    val_dataset, _ = build_val_dataset(cfg)
+    val_dataset, gt_file = build_val_dataset(cfg)
+    gt_file = osp.abspath(gt_file)
     
     optimizer = make_optimizer(cfg,model)
     scheduler = make_lr_scheduler(cfg,optimizer)
@@ -174,10 +200,11 @@ def train(cfg):
 
     global_iteration = epoch_size*start_epoch
 
-    # setup_wandb(cfg)
+    setup_wandb(cfg)
+    best_iou = 0.0
 
     for epoch in range(start_epoch+1, arguments['max_epoch']+1):
-        meters = MetricLogger(" Train")
+        meters = MetricLogger(" ")
         model.train()
         arguments['epoch'] = epoch
 
@@ -210,18 +237,32 @@ def train(cfg):
                          optimizer.param_groups[0]["lr"])
 
 
+            if it % 200 == 0 and it > 0:
+                break
 
-            # validation(model,val_dataset,loss_reducer,device)
+        outfile = osp.join(cfg.OUTPUT_DIR,'validation','validation_{:05d}.json'.format(epoch))
+        os.makedirs(osp.dirname(outfile),exist_ok=True)
+        iou, ciou = validation(model, val_dataset, device, outfile=outfile, gtfile=gt_file)
 
-        # wandb.log({"acc": 0.1, "loss": 0.1})
+        # make wandb dict
+        wandb_dict = {}
+        for key in meters.meters.keys():
+            if 'loss' in key:
+                wandb_dict[key] = meters.meters[key].global_avg
+
+        wandb_dict['val_iou'] = iou
+        wandb_dict['val_ciou'] = ciou
+        wandb_dict['epoch'] = epoch
+
+        wandb.log(wandb_dict)
 
         checkpointer.save('model_{:05d}'.format(epoch))
+        if iou > best_iou:
+            logger.info(f"New best IoU of {iou}")
+            best_iou = iou
+            checkpointer.save('model_best')
+
         scheduler.step()
-
-        # TODO:
-        # implement a validation run with the just saved model here
-        # besides that, I need a validation loss!!
-
 
     wandb.finish()
 
@@ -238,6 +279,9 @@ if __name__ == "__main__":
 
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
+
+    cfg.OUTPUT_DIR = osp.join(cfg.OUTPUT_DIR, datetime.datetime.now().strftime("%Y-%m-%d_%H:%M"))
+
     cfg.freeze()
     
     output_dir = cfg.OUTPUT_DIR

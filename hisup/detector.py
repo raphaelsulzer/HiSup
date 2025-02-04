@@ -98,6 +98,30 @@ class BuildingDetector(nn.Module):
         else:
             return self.forward_test(images, annotations=annotations)
 
+    def compute_val_loss(self,annotations,outputs,mask_pred,jloc_pred,afm_pred,remask_pred):
+
+        ### note: this is currently not possible, because the validation set is not downscaled to 128x128 pixels,
+        ### so the shape for the loss computation is not correct
+
+        targets, metas = self.encoder(annotations)
+
+        loss_dict = {
+            'loss_jloc': 0.0,
+            'loss_joff': 0.0,
+            'loss_mask': 0.0,
+            'loss_afm' : 0.0,
+            'loss_remask': 0.0
+        }
+
+        loss_dict['loss_jloc'] += self.junc_loss(jloc_pred, targets['jloc'].squeeze(dim=1))
+        loss_dict['loss_joff'] += sigmoid_l1_loss(outputs[:, :], targets['joff'], -0.5, targets['jloc'])
+        loss_dict['loss_mask'] += F.cross_entropy(mask_pred, targets['mask'].squeeze(dim=1).long())
+        loss_dict['loss_afm'] += F.l1_loss(afm_pred, targets['afmap'])
+        loss_dict['loss_remask'] += F.cross_entropy(remask_pred, targets['mask'].squeeze(dim=1).long())
+
+        return loss_dict
+
+
     def forward_test(self, images, annotations = None):
 
         outputs, features = self.backbone(images)
@@ -115,6 +139,8 @@ class BuildingDetector(nn.Module):
 
         afm_conv = self.refuse_conv(afm_pred)
         remask_pred = self.final_conv(torch.cat((features, afm_conv), dim=1))
+
+        # loss_dict = self.compute_loss(annotations,outputs,mask_pred,jloc_pred,afm_pred,remask_pred)
 
         joff_pred = outputs[:, :].sigmoid() - 0.5
 
