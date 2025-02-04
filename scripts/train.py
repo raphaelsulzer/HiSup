@@ -8,6 +8,7 @@ import datetime
 import wandb
 import os.path as osp
 import json
+from tqdm import tqdm
 
 from hisup.config import cfg
 from hisup.detector import BuildingDetector
@@ -25,7 +26,6 @@ from tools.test_pipelines import generate_coco_ann
 import torch
 torch.multiprocessing.set_sharing_strategy('file_system')
 
-from tqdm import tqdm
 
 class LossReducer(object):
     def __init__(self, cfg):
@@ -44,7 +44,13 @@ def parse_args():
                         metavar="FILE",
                         help="path to config file",
                         type=str,
-                        default="./config-files/lidarpoly_hrnet48.yaml",
+                        default="./config-files/lidarpoly_hrnet48_debug.yaml",
+                        )
+
+    parser.add_argument("--log-to-wandb",
+                        help="Activate logging to weights and biases",
+                        type=bool,
+                        default=False,
                         )
     
     parser.add_argument("--clean",
@@ -166,7 +172,7 @@ def validation(model,val_dataset,device,outfile,gtfile):
 
 
 def train(cfg):
-    logger = logging.getLogger("training")
+    logger = logging.getLogger("Training")
     device = cfg.MODEL.DEVICE
     model = BuildingDetector(cfg)
     model = model.to(device)
@@ -200,7 +206,9 @@ def train(cfg):
 
     global_iteration = epoch_size*start_epoch
 
-    setup_wandb(cfg)
+    if cfg.LOG_TO_WANDB:
+        setup_wandb(cfg)
+
     best_iou = 0.0
 
     for epoch in range(start_epoch+1, arguments['max_epoch']+1):
@@ -236,25 +244,25 @@ def train(cfg):
                          it,len(train_dataset),
                          optimizer.param_groups[0]["lr"])
 
-
-            if it % 200 == 0 and it > 0:
-                break
+            # if it % 200 == 0 and it > 0:
+            #     break
 
         outfile = osp.join(cfg.OUTPUT_DIR,'validation','validation_{:05d}.json'.format(epoch))
         os.makedirs(osp.dirname(outfile),exist_ok=True)
         iou, ciou = validation(model, val_dataset, device, outfile=outfile, gtfile=gt_file)
 
-        # make wandb dict
-        wandb_dict = {}
-        for key in meters.meters.keys():
-            if 'loss' in key:
-                wandb_dict[key] = meters.meters[key].global_avg
+        if cfg.LOG_TO_WANDB:
+            # make wandb dict
+            wandb_dict = {}
+            for key in meters.meters.keys():
+                if 'loss' in key:
+                    wandb_dict[key] = meters.meters[key].global_avg
 
-        wandb_dict['val_iou'] = iou
-        wandb_dict['val_ciou'] = ciou
-        wandb_dict['epoch'] = epoch
+            wandb_dict['val_iou'] = iou
+            wandb_dict['val_ciou'] = ciou
+            wandb_dict['epoch'] = epoch
 
-        wandb.log(wandb_dict)
+            wandb.log(wandb_dict)
 
         checkpointer.save('model_{:05d}'.format(epoch))
         if iou > best_iou:
@@ -279,6 +287,7 @@ if __name__ == "__main__":
 
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
+    cfg.LOG_TO_WANDB = args.log_to_wandb
 
     cfg.OUTPUT_DIR = osp.join(cfg.OUTPUT_DIR, datetime.datetime.now().strftime("%Y-%m-%d_%H:%M"))
 

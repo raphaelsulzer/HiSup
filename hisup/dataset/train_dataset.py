@@ -19,6 +19,7 @@ def affine_transform(pt, t):
 class TrainDataset(Dataset):
     def __init__(self, root, ann_file, transform=None, rotate_f=None):
         self.root = root
+        self.lidar_root = self.root.replace('images', 'lidar')
 
         self.ann_file = os.path.abspath(ann_file)
         if not os.path.isfile(self.ann_file):
@@ -28,6 +29,7 @@ class TrainDataset(Dataset):
         images_id = self.coco.getImgIds()
         self.images=images_id.copy()
         self.num_samples = len(self.images)
+
 
         self.transform = transform
         self.rotate_f = rotate_f
@@ -160,8 +162,22 @@ class TrainDataset(Dataset):
             ann['juncs_tag'] = np.asarray([0])
             ann['juncs_index'] = np.asarray([0])
 
+
+        lidar_file_name = file_name.replace('image','lidar').replace('.tif','.copc.laz')
+        lidar_file_name = osp.join(self.lidar_root,lidar_file_name)
+
+        if not osp.isfile(lidar_file_name):
+            # print(f'Lidar file {lidar_file_name} missing')
+            pass
+        else:
+            a=5
+
         if self.transform is not None:
             return self.transform(image, ann)
+
+
+        # TODO: add lidar point cloud loading here, need to also implement a transform for a lidar point cloud
+
         return image, ann
 
     def __len__(self):

@@ -24,6 +24,8 @@ def build_train_dataset(cfg):
     name = cfg.DATASETS.TRAIN[0]
     dargs = DatasetCatalog.get(name)
 
+    # TODO: here I need to make PCD transforms, such as subsampling, and rescaling to image coordinates, i.e. TARGET.HEIGHT and TARGET.WIDTH
+
     factory = getattr(train_dataset, dargs['factory'])
     args = dargs['args']
     args['transform'] = Compose(
