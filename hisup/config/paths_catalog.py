@@ -40,7 +40,7 @@ class DatasetCatalog(object):
             'ann_file': 'lidarpoly/annotations_val.json',
         },
         'lidarpoly_test': {
-            'img_dir': 'lidarpoly/images/test',
+            'img_dir': 'lidarpoly/images/train',
             'ann_file': 'lidarpoly/annotations_test.json',
         }
     }

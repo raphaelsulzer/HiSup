@@ -68,7 +68,7 @@ class MetricLogger(object):
             )
         return self.delimiter.join(loss_str)
 
-    def tensorborad(self, iteration, writter, phase='train'):
+    def tensorboard(self, iteration, writter, phase='train'):
         for name, meter in self.meters.items():
             if 'loss' in name:
                 # writter.add_scalar('average/{}'.format(name), meter.avg, iteration)

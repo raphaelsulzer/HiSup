@@ -264,7 +264,8 @@ class TestPipeline():
 
             for b in range(batch_size):
                 filename = annotations[b]['filename']
-                img_id = int(filename[:-4])
+                # img_id = int(filename[:-4])
+                img_id = int(filename.split('_')[0][5:])
 
                 scores = batch_scores[b]
                 polys = batch_polygons[b]

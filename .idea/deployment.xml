@@ -11,6 +11,7 @@
           <excludedPaths>
             <excludedPath local="true" path="$PROJECT_DIR$/data" />
             <excludedPath local="true" path="$PROJECT_DIR$/outputs" />
+            <excludedPath local="true" path="$PROJECT_DIR$/hisup/csrc" />
           </excludedPaths>
         </serverdata>
       </paths>

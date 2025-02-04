@@ -32,8 +32,9 @@ def parse_args():
 
     parser.add_argument("--load_pretrained",
                         help="Load pretrained inria model",
-                        type=bool,
-                        default=True,
+                        type=str,
+                        # default="./outputs/lidarpoly_hrnet48/model_00026.pth",
+                        default="./outputs/inria_hrnet48/inria_hrnet48_e5.pth",
                         )
 
     parser.add_argument("--eval-type",
@@ -57,11 +58,11 @@ def parse_args():
 def test(cfg, args):
     logger = logging.getLogger("testing")
     device = cfg.MODEL.DEVICE
-    if not args.load_pretrained:
+    if not args.load_pretrained is not None:
         model = BuildingDetector(cfg, test=True)
     else:
         logger.info("Loading pretrained inria model")
-        model = get_pretrained_model(cfg, "inria", device, pretrained=True)
+        model = get_pretrained_model(cfg, args.load_pretrained, device=device)
     model = model.to(device)
     if not args.load_pretrained:
         if args.config_file is not None:

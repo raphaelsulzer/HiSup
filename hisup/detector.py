@@ -99,7 +99,7 @@ class BuildingDetector(nn.Module):
             return self.forward_test(images, annotations=annotations)
 
     def forward_test(self, images, annotations = None):
-        device = images.device
+
         outputs, features = self.backbone(images)
 
         mask_feature = self.mask_head(features)
@@ -117,7 +117,7 @@ class BuildingDetector(nn.Module):
         remask_pred = self.final_conv(torch.cat((features, afm_conv), dim=1))
 
         joff_pred = outputs[:, :].sigmoid() - 0.5
-        mask_pred = mask_pred.softmax(1)[:,1:]
+
         jloc_convex_pred = jloc_pred.softmax(1)[:, 2:3]
         jloc_concave_pred = jloc_pred.softmax(1)[:, 1:2]
         remask_pred = remask_pred.softmax(1)[:, 1:]
@@ -165,7 +165,6 @@ class BuildingDetector(nn.Module):
     def forward_train(self, images, annotations = None):
         self.train_step += 1
 
-        device = images.device
         targets, metas = self.encoder(annotations)
         outputs, features = self.backbone(images)
 
@@ -225,18 +224,31 @@ class BuildingDetector(nn.Module):
         return layer
 
 
-def get_pretrained_model(cfg, dataset, device, pretrained=True):
+def get_pretrained_model(cfg, file, device):
+
+    print(f"Loading pretrained model from {file}")
+
+    model = BuildingDetector(cfg, test=True)
+    state_dict = torch.load(file, map_location=device)
+    # state_dict = state_dict["model"]
+    state_dict = {k[7:]:v for k,v in state_dict['model'].items() if k[0:7] == 'module.'}
+    model.load_state_dict(state_dict)
+    model = model.eval()
+    return model
+
+
+def get_pretrained_model_from_url(cfg, dataset, device):
     PRETRAINED = {
         'crowdai': 'https://github.com/XJKunnn/pretrained_model/releases/download/pretrained_model/crowdai_hrnet48_e100.pth',
         'inria': 'https://github.com/XJKunnn/pretrained_model/releases/download/pretrained_model/inria_hrnet48_e5.pth',
     }
 
     model = BuildingDetector(cfg, test=True)
-    if pretrained:
-        url = PRETRAINED[dataset]
-        state_dict = torch.hub.load_state_dict_from_url(url, map_location=device, progress=True)
-        state_dict = {k[7:]:v for k,v in state_dict['model'].items() if k[0:7] == 'module.'}
-        model.load_state_dict(state_dict)
-        model = model.eval()
-        return model
+    url = PRETRAINED[dataset]
+    state_dict = torch.hub.load_state_dict_from_url(url, map_location=device, progress=True)
+    state_dict = {k[7:]:v for k,v in state_dict['model'].items() if k[0:7] == 'module.'}
+    model.load_state_dict(state_dict)
+    model = model.eval()
+
     return model
+

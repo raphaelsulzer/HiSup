@@ -5,10 +5,11 @@ import logging
 import random
 import numpy as np
 import datetime
+import wandb
 
 from hisup.config import cfg
 from hisup.detector import BuildingDetector
-from hisup.dataset import build_train_dataset
+from hisup.dataset import build_train_dataset, build_val_dataset
 from hisup.utils.comm import to_single_device
 from hisup.solver import make_lr_scheduler, make_optimizer
 from hisup.utils.logger import setup_logger
@@ -69,6 +70,76 @@ def set_random_seed(seed, deterministic=False):
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
+
+def setup_wandb(cfg):
+    # start a new wandb run to track this script
+    wandb.init(
+        # set the wandb project where this run will be logged
+        project="HiSup image only",
+        # track hyperparameters and run metadata
+        config=dict(cfg)
+    )
+
+
+
+def log_loss(meters,epoch_size,max_epoch,epoch,it,maxiter,learning_rate):
+
+    eta_batch = epoch_size * (max_epoch - epoch + 1) - it + 1
+    eta_seconds = meters.time.global_avg * eta_batch
+    eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
+
+    logger.info(
+        meters.delimiter.join(
+            [
+                "eta: {eta}",
+                "epoch: {epoch}/{maxepoch}",
+                "iter: {iter}/{maxiter}",
+                "{meters}",
+                "lr: {lr:.6f}",
+                "max mem (GB): {memory:.0f}\n",
+            ]
+        ).format(
+            eta=eta_string,
+            epoch=epoch,
+            maxepoch=max_epoch,
+            iter=it,
+            maxiter=maxiter,
+            meters=str(meters),
+            lr=learning_rate,
+            memory=torch.cuda.max_memory_allocated() / 1024.0 / 1024.0 / 1024.0,
+        )
+    )
+
+
+
+
+def validation(model,val_dataset,loss_reducer,device):
+
+    # model.eval()
+
+    ### Validation
+    meters_val = MetricLogger("Val")
+
+
+    for it, (images, annotations) in enumerate(val_dataset):
+        # with torch.no_grad():
+
+        images = images.to(device)
+        annotations = to_single_device(annotations, device)
+
+        loss_dict, _ = model(images, annotations)
+        total_loss = loss_reducer(loss_dict)
+
+        loss_dict_reduced = {k: v.item() for k, v in loss_dict.items()}
+        loss_reduced = total_loss.item()
+        meters_val.update(loss=loss_reduced, **loss_dict_reduced)
+
+
+
+    model.train()
+
+
+
 def train(cfg):
     logger = logging.getLogger("training")
     device = cfg.MODEL.DEVICE
@@ -76,6 +147,7 @@ def train(cfg):
     model = model.to(device)
 
     train_dataset = build_train_dataset(cfg)
+    val_dataset, _ = build_val_dataset(cfg)
     
     optimizer = make_optimizer(cfg,model)
     scheduler = make_lr_scheduler(cfg,optimizer)
@@ -102,8 +174,10 @@ def train(cfg):
 
     global_iteration = epoch_size*start_epoch
 
+    # setup_wandb(cfg)
+
     for epoch in range(start_epoch+1, arguments['max_epoch']+1):
-        meters = MetricLogger(" ")
+        meters = MetricLogger(" Train")
         model.train()
         arguments['epoch'] = epoch
 
@@ -124,45 +198,33 @@ def train(cfg):
             total_loss.backward()
             optimizer.step()
             global_iteration +=1
-            
+
             batch_time = time.time() - end
             end = time.time()
             meters.update(time=batch_time, data=data_time)
 
-            eta_batch = epoch_size*(max_epoch-epoch+1) - it +1
-            eta_seconds = meters.time.global_avg*eta_batch
-            eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
-
             if it % 20 == 0 or it+1 == len(train_dataset):
-                logger.info(
-                    meters.delimiter.join(
-                        [
-                            "eta: {eta}",
-                            "epoch: {epoch}/{maxepoch}",
-                            "iter: {iter}/{maxiter}",
-                            "{meters}",
-                            "lr: {lr:.6f}",
-                            "max mem: {memory:.0f}\n",
-                        ]
-                    ).format(
-                        eta=eta_string,
-                        epoch=epoch,
-                        maxepoch=arguments['max_epoch'],
-                        iter=it,
-                        maxiter=len(train_dataset),
-                        meters=str(meters),
-                        lr=optimizer.param_groups[0]["lr"],
-                        memory=torch.cuda.max_memory_allocated() / 1024.0 / 1024.0,
-                    )
-                )
+                log_loss(meters,
+                         epoch_size,max_epoch,epoch,
+                         it,len(train_dataset),
+                         optimizer.param_groups[0]["lr"])
 
-        logger.info(f"Save model after epoch {epoch} to {os.path.join(cfg.OUTPUT_DIR,'model_{:05d}'.format(epoch))}")
+
+
+            # validation(model,val_dataset,loss_reducer,device)
+
+        # wandb.log({"acc": 0.1, "loss": 0.1})
+
         checkpointer.save('model_{:05d}'.format(epoch))
         scheduler.step()
 
         # TODO:
         # implement a validation run with the just saved model here
-    
+        # besides that, I need a validation loss!!
+
+
+    wandb.finish()
+
     total_training_time = time.time() - start_training_time
     total_time_str = str(datetime.timedelta(seconds=total_training_time))
     logger.info(

@@ -31,6 +31,7 @@ class ValDataset(dset.coco.CocoDetection):
             'juncs_index': [],
             'segmentations': [],
             'bbox': [],
+            'edges_positive': [],
         }
 
         pid = 0
@@ -61,9 +62,13 @@ class ValDataset(dset.coco.CocoDetection):
                     interior_contour = segm.reshape(-1, 1, 2)
                     cv2.drawContours(seg_mask, [np.int0(interior_contour)], -1, color=0, thickness=-1)
 
+            idxs = np.arange(len(juncs))
+            edges = np.stack((idxs, np.roll(idxs, 1))).transpose(1, 0) + pid
+
             ann['junctions'].extend(juncs)
             ann['juncs_index'].extend([instance_id] * len(juncs))
             ann['juncs_tag'].extend(tags)
+            ann['edges_positive'].extend(edges.tolist())
             if len(juncs) > 0:
                 instance_id += 1
                 pid += len(juncs)
@@ -71,6 +76,7 @@ class ValDataset(dset.coco.CocoDetection):
         ann['mask'] = np.clip(seg_mask, 0, 1)
         
         for key,_type in (['junctions',np.float32],
+                          ['edges_positive', np.long],
                           ['juncs_tag',np.long],
                           ['juncs_index', np.long],
                           ['bbox', np.float32]):
