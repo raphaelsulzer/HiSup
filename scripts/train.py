@@ -216,7 +216,9 @@ def train(cfg):
         model.train()
         arguments['epoch'] = epoch
 
-        for it, (images, annotations) in enumerate(train_dataset):
+        for it, (images, points, annotations) in enumerate(train_dataset):
+
+            a=5
             data_time = time.time() - end
             images = images.to(device)
             annotations = to_single_device(annotations,device)

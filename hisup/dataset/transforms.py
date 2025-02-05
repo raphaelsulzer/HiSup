@@ -7,28 +7,57 @@ from torchvision.transforms import functional as F
 from skimage.transform import resize
 
 
-class Compose(object):
+class Compose:
     def __init__(self, transforms):
         self.transforms = transforms
 
-    def __call__(self, image, ann=None, points=None):
+    def __call__(self, image, points=None, ann=None):
         if ann is None:
             for t in self.transforms:
-                image = t(image, points)
-            return image
+                image, points = t(image, points)
+            return image, points
         for t in self.transforms:
-            image, ann = t(image, ann, points)
-        return image, ann
+            image, points, ann = t(image, points, ann)
+        return image, points, ann
 
 
-class Resize(object):
+class ResamplePointCloud:
+
+    def __init__(self, n_points=100000):
+        self.n_points = n_points
+
+    def __call__(self, image, points, ann=None):
+
+        if points is None:
+            if ann is None:
+                return image, points
+            else:
+                return image, points, ann
+
+        num_points = len(points)
+
+        if num_points == self.n_points:
+            return points
+        elif num_points > self.n_points:
+            indices = np.random.choice(num_points, self.n_points, replace=False)  # Subsample
+        else:
+            indices = np.random.choice(num_points, self.n_points, replace=True)  # Upsample
+
+        if ann is None:
+            return image, points[indices]
+        else:
+            return image, points[indices], ann
+
+
+
+class Resize:
     def __init__(self, image_height, image_width, ann_height, ann_width):
         self.image_height = image_height
         self.image_width = image_width
         self.ann_height = ann_height
         self.ann_width = ann_width
 
-    def __call__(self, image, ann, points=None):
+    def __call__(self, image, points, ann):
         image = resize(image, (self.image_height, self.image_width))
         image = np.array(image, dtype=np.float32) / 255.0
 
@@ -42,66 +71,53 @@ class Resize(object):
         ann['mask_ori'] = ann['mask'].copy()
         ann['mask'] = cv2.resize(ann['mask'].astype(np.uint8), (int(self.ann_width), int(self.ann_height)))
 
-        return image, ann
+        return image, points, ann
 
 
-class ResizeImage(object):
+class ResizeImage:
     def __init__(self, image_height, image_width):
         self.image_height = image_height
         self.image_width = image_width
 
-    def __call__(self, image, ann=None, points=None):
+    def __call__(self, image, points, ann=None):
         image = resize(image, (self.image_height, self.image_width))
         image = np.array(image, dtype=np.float32) / 255.0
         if ann is None:
-            if points is None:
-                return image
-            else:
-                return image, points
+            return image, points
+        return image, points, ann
 
-        if points is None:
-            return image, ann
-        else:
-            return image, ann, points
 
-class ToTensor(object):
-    def __call__(self, image, anns=None, points=None):
+class ToTensor:
+    def __call__(self, image, points, anns=None):
+
+        if points is not None:
+            points = F.to_tensor(points)
+
         if anns is None:
-            if points is None:
-                return F.to_tensor(image)
-            else:
-                return F.to_tensor(image), F.to_tensor(points)
+            return F.to_tensor(image), points
 
         for key, val in anns.items():
             if isinstance(val, np.ndarray):
                 anns[key] = torch.from_numpy(val)
 
-        if points is None:
-            return F.to_tensor(image), anns
-        else:
-            return F.to_tensor(image), anns, F.to_tensor(points)
+        return F.to_tensor(image), points, anns
 
-class Normalize(object):
+
+class Normalize:
     def __init__(self, mean, std, to_255=False):
         self.mean = mean
         self.std = std
         self.to_255 = to_255
 
-    def __call__(self, image, anns=None, points=None):
+    def __call__(self, image, points, anns=None):
         if self.to_255:
             image *= 255.0
         image = F.normalize(image, mean=self.mean, std=self.std)
         if anns is None:
-            if points is None:
-                return image
-            else:
-                return image, points
-        if points is None:
-            return image, anns
-        else:
-            return image, anns, points
+            return image, points
+        return image, points, anns
 
-class Color_jitter(object):
+class Color_jitter:
     def __init__(self):
         self.jitter = torchvision.transforms.ColorJitter(brightness=0.05, contrast=0.05, saturation=.5, hue=.1)
     def __call__(self, image, anns=None):

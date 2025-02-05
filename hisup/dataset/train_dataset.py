@@ -20,7 +20,7 @@ def affine_transform(pt, t):
     return new_pt[:2]
 
 class TrainDataset(Dataset):
-    def __init__(self, root, ann_file, transform=None, rotate_f=None, logging_level=logging.DEBUG):
+    def __init__(self, root, ann_file, transform=None, rotate_f=None, logging_level=logging.INFO):
         self.root = root
         self.lidar_root = self.root.replace('images', 'lidar')
 
@@ -276,14 +276,22 @@ class TrainDataset(Dataset):
         # self.debug_vis(image, points, ann)
 
         if self.transform is not None:
-            return self.transform(image, ann, points)
+            return self.transform(image, points, ann)
 
-        return image, ann
+        return image, points, ann
 
     def __len__(self):
         return self.num_samples
 
 
 def collate_fn(batch):
-    return (default_collate([b[0] for b in batch]),
-            [b[1] for b in batch])
+
+    if len(batch[0]) == 2:
+        # without points
+        return (default_collate([b[0] for b in batch]), None, [b[1] for b in batch])
+    elif len(batch[0]) == 3:
+        return (default_collate([b[0] for b in batch]),
+                default_collate([b[1] for b in batch]),
+                [b[2] for b in batch])
+    else:
+        raise ValueError("Incorrect sample dimension!")
