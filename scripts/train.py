@@ -23,7 +23,7 @@ from hisup.utils.metrics.cIoU import compute_IoU_cIoU
 
 from tools.test_pipelines import generate_coco_ann
 
-from ptv3.model import PointTransformerV3
+# from ptv3.model import PointTransformerV3
 
 import torch
 torch.multiprocessing.set_sharing_strategy('file_system')
@@ -46,13 +46,26 @@ def parse_args():
                         metavar="FILE",
                         help="path to config file",
                         type=str,
-                        default="./config-files/lidarpoly_hrnet48_debug.yaml",
+                        # default="./config-files/lidarpoly_hrnet48_debug.yaml",
+                        default="./config-files/lidarpoly_hrnet48.yaml",
                         )
 
     parser.add_argument("--log-to-wandb",
                         help="Activate logging to weights and biases",
                         type=bool,
                         default=False,
+                        )
+
+    parser.add_argument("--use-lidar",
+                        help="Activate use of lidar pointclouds as input",
+                        type=bool,
+                        default=False,
+                        )
+
+    parser.add_argument("--use-images",
+                        help="Activate use of images as input",
+                        type=bool,
+                        default=True,
                         )
     
     parser.add_argument("--clean",
@@ -180,7 +193,7 @@ def train(cfg):
     model = BuildingDetector(cfg)
     model = model.to(device)
 
-    pt_model = PointTransformerV3(in_channels=3)
+    # pt_model = PointTransformerV3(in_channels=3)
 
     train_dataset = build_train_dataset(cfg)
     val_dataset, gt_file = build_val_dataset(cfg)
@@ -223,7 +236,6 @@ def train(cfg):
 
         for it, (images, points, annotations) in enumerate(train_dataset):
 
-            a=5
             data_time = time.time() - end
             images = images.to(device)
             annotations = to_single_device(annotations,device)
@@ -298,6 +310,8 @@ if __name__ == "__main__":
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
     cfg.LOG_TO_WANDB = args.log_to_wandb
+    cfg.USE_LIDAR = args.use_lidar
+    cfg.USE_IMAGES = args.use_images
 
     cfg.OUTPUT_DIR = osp.join(cfg.OUTPUT_DIR, datetime.datetime.now().strftime("%Y-%m-%d_%H:%M"))
 

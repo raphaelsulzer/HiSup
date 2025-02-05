@@ -1,6 +1,6 @@
 import os.path as osp
 
-class DatasetCatalog(object):
+class DatasetCatalog:
 
     # DATA_DIR = osp.abspath(osp.join(osp.dirname(__file__),
     #             '..','..','data'))

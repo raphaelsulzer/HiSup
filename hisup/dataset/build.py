@@ -1,5 +1,4 @@
-from re import I
-import torch
+from functools import partial
 from .transforms import *
 from . import train_dataset
 from hisup.config.paths_catalog import DatasetCatalog
@@ -25,8 +24,6 @@ def build_train_dataset(cfg):
     name = cfg.DATASETS.TRAIN[0]
     dargs = DatasetCatalog.get(name)
 
-    # TODO: here I need to make PCD transforms, such as subsampling, and rescaling to image coordinates, i.e. TARGET.HEIGHT and TARGET.WIDTH
-
     factory = getattr(train_dataset, dargs['factory'])
     args = dargs['args']
     args['transform'] = Compose(
@@ -41,11 +38,15 @@ def build_train_dataset(cfg):
                    cfg.DATASETS.IMAGE.TO_255),
          ])
     args['rotate_f'] = cfg.DATASETS.ROTATE_F
+    args['use_lidar'] = cfg.USE_LIDAR
+    args['use_images'] = cfg.USE_IMAGES
     dataset = factory(**args)
+
+    collate_fn = partial(train_dataset.collate_fn, use_lidar= cfg.USE_LIDAR, use_images=cfg.USE_IMAGES)
 
     dataset = torch.utils.data.DataLoader(dataset,
                                           batch_size=cfg.SOLVER.IMS_PER_BATCH,
-                                          collate_fn=train_dataset.collate_fn,
+                                          collate_fn=collate_fn,
                                           shuffle=True,
                                           num_workers=cfg.DATALOADER.NUM_WORKERS)
     return dataset

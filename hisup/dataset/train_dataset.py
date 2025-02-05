@@ -20,9 +20,12 @@ def affine_transform(pt, t):
     return new_pt[:2]
 
 class TrainDataset(Dataset):
-    def __init__(self, root, ann_file, transform=None, rotate_f=None, logging_level=logging.INFO):
+    def __init__(self, root, ann_file, use_lidar=False, use_images=True, transform=None, rotate_f=None, logging_level=logging.INFO):
         self.root = root
         self.lidar_root = self.root.replace('images', 'lidar')
+
+        self.use_lidar = use_lidar
+        self.use_images = use_images
 
         self.logger = make_logger('Train Dataset', logging_level)
 
@@ -250,10 +253,13 @@ class TrainDataset(Dataset):
                            ):
             ann[key] = np.array(ann[key], dtype=_type)
 
-        # load lidar
-        lidar_file_name = file_name.replace('image','lidar').replace('.tif','.copc.laz')
-        lidar_file_name = osp.join(self.lidar_root,lidar_file_name)
-        points = self.load_lidar_points(lidar_file_name,img_info)
+        if self.use_lidar:
+            # load lidar
+            lidar_file_name = file_name.replace('image','lidar').replace('.tif','.copc.laz')
+            lidar_file_name = osp.join(self.lidar_root,lidar_file_name)
+            points = self.load_lidar_points(lidar_file_name,img_info)
+        else:
+            points = None
 
         # augmentation
         if self.rotate_f:
@@ -284,14 +290,25 @@ class TrainDataset(Dataset):
         return self.num_samples
 
 
-def collate_fn(batch):
+def collate_fn(batch, use_lidar, use_images):
 
-    if len(batch[0]) == 2:
-        # without points
-        return (default_collate([b[0] for b in batch]), None, [b[1] for b in batch])
-    elif len(batch[0]) == 3:
+
+    if use_images and not use_lidar:
+        return (default_collate([b[0] for b in batch]), None, [b[2] for b in batch])
+    elif not use_images and use_lidar:
+        return (None, default_collate([b[0] for b in batch]), [b[2] for b in batch])
+    elif use_images and use_lidar:
         return (default_collate([b[0] for b in batch]),
                 default_collate([b[1] for b in batch]),
                 [b[2] for b in batch])
     else:
-        raise ValueError("Incorrect sample dimension!")
+        raise ValueError("You must either activate 'use_images' or 'use_lidar'!")
+
+    # if len(batch[0][1]) is None:
+    #     # without points
+    #     return (default_collate([b[0] for b in batch]), None, [b[1] for b in batch])
+    # else:
+    #     return (default_collate([b[0] for b in batch]),
+    #             default_collate([b[1] for b in batch]),
+    #             [b[2] for b in batch])
+
