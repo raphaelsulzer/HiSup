@@ -3,6 +3,7 @@ import random
 import os.path as osp
 import numpy as np
 import os
+import copclib as copc
 
 from skimage import io
 from pycocotools.coco import COCO
@@ -33,6 +34,128 @@ class TrainDataset(Dataset):
 
         self.transform = transform
         self.rotate_f = rotate_f
+
+    def rotate(self, image, ann, seg_mask, points=None):
+
+        reminder = ann['reminder']
+        width = ann['width']
+        height = ann['height']
+
+        if reminder == 1:  # horizontal flip
+            image = image[:, ::-1, :]
+            if points is not None:
+                points = points[:, ::-1, :]
+            ann['junctions'][:, 0] = width - ann['junctions'][:, 0]
+            ann['bbox'] = ann['bbox'][:, [2, 1, 0, 3]]
+            ann['bbox'][:, 0] = width - ann['bbox'][:, 0]
+            ann['bbox'][:, 2] = width - ann['bbox'][:, 2]
+            seg_mask = np.fliplr(seg_mask)
+        elif reminder == 2:  # vertical flip
+            image = image[::-1, :, :]
+            if points is not None:
+                points = points[::-1, :, :]
+            ann['junctions'][:, 1] = height - ann['junctions'][:, 1]
+            ann['bbox'] = ann['bbox'][:, [0, 3, 2, 1]]
+            ann['bbox'][:, 1] = height - ann['bbox'][:, 1]
+            ann['bbox'][:, 3] = height - ann['bbox'][:, 3]
+            seg_mask = np.flipud(seg_mask)
+        elif reminder == 3:  # horizontal and vertical flip
+            image = image[::-1, ::-1, :]
+            if points is not None:
+                points = points[::-1, ::-1, :]
+            seg_mask = np.fliplr(seg_mask)
+            seg_mask = np.flipud(seg_mask)
+            ann['junctions'][:, 0] = width - ann['junctions'][:, 0]
+            ann['junctions'][:, 1] = height - ann['junctions'][:, 1]
+            ann['bbox'] = ann['bbox'][:, [2, 3, 0, 1]]
+            ann['bbox'][:, 0] = width - ann['bbox'][:, 0]
+            ann['bbox'][:, 2] = width - ann['bbox'][:, 2]
+            ann['bbox'][:, 1] = height - ann['bbox'][:, 1]
+            ann['bbox'][:, 3] = height - ann['bbox'][:, 3]
+        elif reminder == 4:  # rotate 90 degree
+            rot_matrix = cv2.getRotationMatrix2D((int(width / 2), (height / 2)), 90, 1)
+            image = cv2.warpAffine(image, rot_matrix, (width, height))
+            seg_mask = cv2.warpAffine(seg_mask, rot_matrix, (width, height))
+            ann['junctions'] = np.asarray([affine_transform(p, rot_matrix) for p in ann['junctions']], dtype=np.float32)
+            ann['bbox'] = np.asarray([affine_transform(p, rot_matrix) for p in ann['bbox']], dtype=np.float32)
+        elif reminder == 5:  # rotate 270 degree
+            rot_matrix = cv2.getRotationMatrix2D((int(width / 2), (height / 2)), 270, 1)
+            image = cv2.warpAffine(image, rot_matrix, (width, height))
+            seg_mask = cv2.warpAffine(seg_mask, rot_matrix, (width, height))
+            ann['junctions'] = np.asarray([affine_transform(p, rot_matrix) for p in ann['junctions']], dtype=np.float32)
+            ann['bbox'] = np.asarray([affine_transform(p, rot_matrix) for p in ann['bbox']], dtype=np.float32)
+        else:
+            pass
+        ann['mask'] = seg_mask
+
+        return image, points, ann
+
+
+
+    def debug_vis(self, image, point_cloud, ann):
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import matplotlib.colors as mcolors
+
+
+        # Example polygon data
+        polygon_indices = ann['juncs_index']
+        polygon_vertices = ann['junctions']
+
+
+        # Get unique polygon IDs
+        unique_polygons = np.unique(polygon_indices)
+
+        # Assign a different color to each polygon
+        colors = list(mcolors.TABLEAU_COLORS.values())
+
+        # Plot the image
+        fig, ax = plt.subplots()
+        ax.imshow(image/255.0)  # No cmap, assuming it's an RGB image
+
+        # Normalize Z-values for colormap
+        z_min, z_max = point_cloud[:, 2].min(), point_cloud[:, 2].max()
+        norm = plt.Normalize(vmin=z_min, vmax=z_max)
+        cmap = plt.cm.turbo  # 'turbo' colormap
+
+        # Plot point cloud below polygons
+        ax.scatter(point_cloud[:, 0], point_cloud[:, 1], c=cmap(norm(point_cloud[:, 2])), s=5, zorder=2)
+
+        # Plot polygons
+        for i, pid in enumerate(unique_polygons):
+            # Get vertices belonging to this polygon
+            mask = polygon_indices == pid
+            poly = polygon_vertices[mask]
+
+            # Draw polygon edges
+            color = colors[i % len(colors)]  # Cycle through colors
+            ax.plot(*zip(*np.vstack([poly, poly[0]])), color=color, linewidth=2)
+
+            # Draw polygon vertices
+            ax.scatter(poly[:, 0], poly[:, 1], color=color, edgecolors='black', zorder=3)
+
+        plt.show()
+
+    def load_lidar_points(self, lidar_file_name, img_info):
+
+        if osp.isfile(lidar_file_name):
+            # Create a reader object
+            reader = copc.FileReader(lidar_file_name)
+            # Get the node metadata from the hierarchy
+            node = reader.FindNode(copc.VoxelKey(0, 0, 0, 0))
+            # Fetch the points of a node
+            points = reader.GetPoints(node)
+
+            points = np.stack([points.x, points.y, points.z], axis=1)
+            points[:,:2] = (points[:,:2] - img_info['top_left'])/img_info.get('res_x',0.25)
+            points[:,1] = img_info['height'] - points[:,1]
+
+        else:
+            print(f'Lidar file {lidar_file_name} missing')
+            points = None
+
+        return points
 
     def __getitem__(self, idx_):
         # basic information
@@ -107,54 +230,22 @@ class TrainDataset(Dataset):
                            ):
             ann[key] = np.array(ann[key], dtype=_type)
 
+        # load lidar
+        lidar_file_name = file_name.replace('image','lidar').replace('.tif','.copc.laz')
+        lidar_file_name = osp.join(self.lidar_root,lidar_file_name)
+        points = self.load_lidar_points(lidar_file_name,img_info)
+
         # augmentation
         if self.rotate_f:
             reminder = random.randint(0, 5)
         else:
             reminder = random.randint(0, 3)
+
         ann['reminder'] = reminder
 
         if len(ann['junctions']) > 0:
-            if reminder == 1:   # horizontal flip
-                image = image[:, ::-1, :]
-                ann['junctions'][:, 0] = width - ann['junctions'][:, 0]
-                ann['bbox'] = ann['bbox'][:, [2, 1, 0, 3]]
-                ann['bbox'][:, 0] = width - ann['bbox'][:, 0]
-                ann['bbox'][:, 2] = width - ann['bbox'][:, 2]
-                seg_mask = np.fliplr(seg_mask)
-            elif reminder == 2: # vertical flip
-                image = image[::-1, :, :]
-                ann['junctions'][:, 1] = height - ann['junctions'][:, 1]
-                ann['bbox'] = ann['bbox'][:, [0, 3, 2, 1]]
-                ann['bbox'][:, 1] = height - ann['bbox'][:, 1]
-                ann['bbox'][:, 3] = height - ann['bbox'][:, 3]
-                seg_mask = np.flipud(seg_mask)
-            elif reminder == 3: # horizontal and vertical flip
-                image = image[::-1, ::-1, :]
-                seg_mask = np.fliplr(seg_mask)
-                seg_mask = np.flipud(seg_mask)
-                ann['junctions'][:, 0] = width - ann['junctions'][:, 0]
-                ann['junctions'][:, 1] = height - ann['junctions'][:, 1]
-                ann['bbox'] = ann['bbox'][:, [2, 3, 0, 1]]
-                ann['bbox'][:, 0] = width - ann['bbox'][:, 0]
-                ann['bbox'][:, 2] = width - ann['bbox'][:, 2]
-                ann['bbox'][:, 1] = height - ann['bbox'][:, 1]
-                ann['bbox'][:, 3] = height - ann['bbox'][:, 3]
-            elif reminder == 4: # rotate 90 degree
-                rot_matrix = cv2.getRotationMatrix2D((int(width/2), (height/2)), 90, 1)
-                image = cv2.warpAffine(image, rot_matrix, (width, height))
-                seg_mask = cv2.warpAffine(seg_mask, rot_matrix, (width, height))
-                ann['junctions'] = np.asarray([affine_transform(p, rot_matrix) for p in ann['junctions']], dtype=np.float32)
-                ann['bbox'] = np.asarray([affine_transform(p, rot_matrix) for p in ann['bbox']], dtype=np.float32)
-            elif reminder == 5: # rotate 270 degree
-                rot_matrix = cv2.getRotationMatrix2D((int(width / 2), (height / 2)), 270, 1)
-                image = cv2.warpAffine(image, rot_matrix, (width, height))
-                seg_mask = cv2.warpAffine(seg_mask, rot_matrix, (width, height))
-                ann['junctions'] = np.asarray([affine_transform(p, rot_matrix) for p in ann['junctions']], dtype=np.float32)
-                ann['bbox'] = np.asarray([affine_transform(p, rot_matrix) for p in ann['bbox']], dtype=np.float32)
-            else:
-                pass
-            ann['mask'] = seg_mask
+            # apply augmentations, such as flip and rotate
+            image, points, ann = self.rotate(image, ann, seg_mask, points)
         else:
             ann['mask'] = np.zeros((height, width), dtype=np.float64)
             ann['junctions'] = np.asarray([[0, 0]])
@@ -162,21 +253,10 @@ class TrainDataset(Dataset):
             ann['juncs_tag'] = np.asarray([0])
             ann['juncs_index'] = np.asarray([0])
 
-
-        lidar_file_name = file_name.replace('image','lidar').replace('.tif','.copc.laz')
-        lidar_file_name = osp.join(self.lidar_root,lidar_file_name)
-
-        if not osp.isfile(lidar_file_name):
-            # print(f'Lidar file {lidar_file_name} missing')
-            pass
-        else:
-            a=5
+        self.debug_vis(image, points, ann)
 
         if self.transform is not None:
             return self.transform(image, ann)
-
-
-        # TODO: add lidar point cloud loading here, need to also implement a transform for a lidar point cloud
 
         return image, ann
 

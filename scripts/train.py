@@ -257,11 +257,8 @@ def train(cfg):
             for key in meters.meters.keys():
                 if 'loss' in key:
                     wandb_dict[key] = meters.meters[key].global_avg
-
             wandb_dict['val_iou'] = iou
             wandb_dict['val_ciou'] = ciou
-            wandb_dict['epoch'] = epoch
-
             wandb.log(wandb_dict)
 
         checkpointer.save('model_{:05d}'.format(epoch))
