@@ -11,13 +11,13 @@ class Compose(object):
     def __init__(self, transforms):
         self.transforms = transforms
 
-    def __call__(self, image, ann=None):
+    def __call__(self, image, ann=None, points=None):
         if ann is None:
             for t in self.transforms:
-                image = t(image)
+                image = t(image, points)
             return image
         for t in self.transforms:
-            image, ann = t(image, ann)
+            image, ann = t(image, ann, points)
         return image, ann
 
 
@@ -28,7 +28,7 @@ class Resize(object):
         self.ann_height = ann_height
         self.ann_width = ann_width
 
-    def __call__(self, image, ann):
+    def __call__(self, image, ann, points=None):
         image = resize(image, (self.image_height, self.image_width))
         image = np.array(image, dtype=np.float32) / 255.0
 
@@ -50,24 +50,36 @@ class ResizeImage(object):
         self.image_height = image_height
         self.image_width = image_width
 
-    def __call__(self, image, ann=None):
+    def __call__(self, image, ann=None, points=None):
         image = resize(image, (self.image_height, self.image_width))
         image = np.array(image, dtype=np.float32) / 255.0
         if ann is None:
-            return image
-        return image, ann
+            if points is None:
+                return image
+            else:
+                return image, points
 
+        if points is None:
+            return image, ann
+        else:
+            return image, ann, points
 
 class ToTensor(object):
-    def __call__(self, image, anns=None):
+    def __call__(self, image, anns=None, points=None):
         if anns is None:
-            return F.to_tensor(image)
+            if points is None:
+                return F.to_tensor(image)
+            else:
+                return F.to_tensor(image), F.to_tensor(points)
 
         for key, val in anns.items():
             if isinstance(val, np.ndarray):
                 anns[key] = torch.from_numpy(val)
-        return F.to_tensor(image), anns
 
+        if points is None:
+            return F.to_tensor(image), anns
+        else:
+            return F.to_tensor(image), anns, F.to_tensor(points)
 
 class Normalize(object):
     def __init__(self, mean, std, to_255=False):
@@ -75,13 +87,19 @@ class Normalize(object):
         self.std = std
         self.to_255 = to_255
 
-    def __call__(self, image, anns=None):
+    def __call__(self, image, anns=None, points=None):
         if self.to_255:
             image *= 255.0
         image = F.normalize(image, mean=self.mean, std=self.std)
         if anns is None:
-            return image
-        return image, anns
+            if points is None:
+                return image
+            else:
+                return image, points
+        if points is None:
+            return image, anns
+        else:
+            return image, anns, points
 
 class Color_jitter(object):
     def __init__(self):

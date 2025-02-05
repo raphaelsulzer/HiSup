@@ -15,7 +15,7 @@ from hisup.detector import BuildingDetector
 from hisup.dataset import build_train_dataset, build_val_dataset
 from hisup.utils.comm import to_single_device
 from hisup.solver import make_lr_scheduler, make_optimizer
-from hisup.utils.logger import setup_logger
+from hisup.utils.logger import make_logger
 from hisup.utils.miscellaneous import save_config
 from hisup.utils.metric_logger import MetricLogger
 from hisup.utils.checkpoint import DetectronCheckpointer
@@ -280,6 +280,12 @@ def train(cfg):
     )
 
 if __name__ == "__main__":
+
+    pycocotools_logger = logging.getLogger("pycocotools")
+    pycocotools_logger.propagate = False  # Prevents log messages from propagating
+    pycocotools_logger.handlers.clear()  # Removes existing handlers
+    pycocotools_logger.setLevel(logging.CRITICAL)  # Suppresses all logs
+
     args = parse_args()
 
     cfg.merge_from_file(args.config_file)
@@ -297,15 +303,15 @@ if __name__ == "__main__":
             shutil.rmtree(output_dir)
         os.makedirs(output_dir, exist_ok=True)
 
-    logger = setup_logger('training', output_dir, out_file='train.log')
+    logger = make_logger('Training', filepath=osp.join(output_dir,'train.log'))
     logger.info(args)
     logger.info("Loaded configuration file {}".format(args.config_file))
 
     with open(args.config_file,"r") as cf:
         config_str = "\n" + cf.read()
-        logger.info(config_str)
+        logger.debug(config_str)
 
-    logger.info("Running with config:\n{}".format(cfg))
+    logger.debug("Running with config:\n{}".format(cfg))
     output_config_path = os.path.join(cfg.OUTPUT_DIR, 'config.yml')
     logger.info("Saving config into: {}".format(output_config_path))
 
