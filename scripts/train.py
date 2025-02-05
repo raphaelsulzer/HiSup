@@ -23,6 +23,8 @@ from hisup.utils.metrics.cIoU import compute_IoU_cIoU
 
 from tools.test_pipelines import generate_coco_ann
 
+from ptv3.model import PointTransformerV3
+
 import torch
 torch.multiprocessing.set_sharing_strategy('file_system')
 
@@ -172,10 +174,13 @@ def validation(model,val_dataset,device,outfile,gtfile):
 
 
 def train(cfg):
+
     logger = logging.getLogger("Training")
     device = cfg.MODEL.DEVICE
     model = BuildingDetector(cfg)
     model = model.to(device)
+
+    pt_model = PointTransformerV3(in_channels=3)
 
     train_dataset = build_train_dataset(cfg)
     val_dataset, gt_file = build_val_dataset(cfg)
