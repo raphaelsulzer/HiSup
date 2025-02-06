@@ -8,8 +8,22 @@ conda install conda-forge::libxcrypt -y  # solves the error when installing the 
 conda create -n pointcept python=3.8 -y
 conda install pytorch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 pytorch-cuda=11.8 -c pytorch -c nvidia -y
 conda install cudatoolkit-dev -y
+conda install cudatoolkit=11.8 -y
 conda install conda-forge::gcc_linux-64=10 conda-forge::gxx_linux-64=10 -y
 conda install anaconda::cython -y
 # now 'hisup/csrc/lib make' should work
+
+## now install flash-attention
+pip install packaging
+pip install ninja
+pip install flash-attn --no-build-isolation
+
+## now install HiSup
+pip install -r requirements.txt
+# install boundary-api
+pip install wandb
+pip install copclib
+conda install conda-forge::colorlog -y
+
 
 # TODO: check if HiSup works with the new ptv3 env, then go on to install flash-attention and finally check if ptv3 model code works
