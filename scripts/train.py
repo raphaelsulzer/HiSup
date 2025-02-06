@@ -23,7 +23,7 @@ from hisup.utils.metrics.cIoU import compute_IoU_cIoU
 
 from tools.test_pipelines import generate_coco_ann
 
-# from ptv3.model import PointTransformerV3
+from ptv3.model import PointTransformerV3
 
 import torch
 torch.multiprocessing.set_sharing_strategy('file_system')
@@ -275,6 +275,7 @@ def train(cfg):
                     wandb_dict[key] = meters.meters[key].global_avg
             wandb_dict['val_iou'] = iou
             wandb_dict['val_ciou'] = ciou
+            wandb_dict['epoch'] = epoch
             wandb.log(wandb_dict)
 
         checkpointer.save('model_{:05d}'.format(epoch))
@@ -294,6 +295,8 @@ def train(cfg):
             total_time_str, total_training_time / (max_epoch)
         )
     )
+
+
 
 if __name__ == "__main__":
 

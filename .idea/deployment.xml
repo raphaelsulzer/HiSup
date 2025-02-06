@@ -1,8 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="rsulzer@gin:22 password" remoteFilesAllowedToDisappearOnAutoupload="false" confirmBeforeUploading="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="ptv3_server (2)" remoteFilesAllowedToDisappearOnAutoupload="false" confirmBeforeUploading="false" showAutoUploadSettingsWarning="false">
     <option name="confirmBeforeUploading" value="false" />
     <serverData>
+      <paths name="ptv3_server (2)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/user/rsulzer/home/remote_python/HiSup" local="$PROJECT_DIR$" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/data" />
+            <excludedPath local="true" path="$PROJECT_DIR$/outputs" />
+            <excludedPath local="true" path="$PROJECT_DIR$/hisup/csrc/lib/afm_op/build" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
       <paths name="rsulzer@gin:22 password">
         <serverdata>
           <mappings>

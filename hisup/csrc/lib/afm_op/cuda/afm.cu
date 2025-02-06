@@ -1,9 +1,10 @@
-#include <ATen/ATen.h>
-#include <ATen/cuda/CUDAContext.h>
-
 // RS: commented the 2 lines below for pytorch 2 support, which does not have THC included
+// https://github.com/open-mmlab/mmdetection3d/issues/1332#issuecomment-2594408887
 // #include <THC/THC.h>
 // #include <THC/THCDeviceUtils.cuh>
+
+#include <ATen/ATen.h>
+#include <ATen/cuda/CUDAContext.h>
 
 #include <vector>
 #include <iostream>

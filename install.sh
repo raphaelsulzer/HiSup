@@ -26,4 +26,9 @@ pip install copclib
 conda install conda-forge::colorlog -y
 
 
-# TODO: check if HiSup works with the new ptv3 env, then go on to install flash-attention and finally check if ptv3 model code works
+## now install ptv3
+conda install conda-forge::addict -y
+pip install spconv-cu118
+conda install pytorch-cluster pytorch-scatter pytorch-sparse -c pyg -y
+conda install sharedarray tensorboard tensorboardx yapf addict einops scipy plyfile termcolor timm -c conda-forge -y
+
