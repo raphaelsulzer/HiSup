@@ -146,7 +146,7 @@ def validation(model,val_dataset,device,outfile,gtfile):
     model.eval()
     results = []
     iou = 0.0; ciou = 0.0
-    for it, (images, annotations) in enumerate(tqdm(val_dataset, desc="Validation")):
+    for it, (images, points, annotations) in enumerate(tqdm(val_dataset, desc="Validation")):
         with torch.no_grad():
 
             images = images.to(device)
@@ -264,7 +264,7 @@ def train(cfg):
                          optimizer.param_groups[0]["lr"])
 
             # if it % 200 == 0 and it > 0:
-            #     break
+                break
 
         outfile = osp.join(cfg.OUTPUT_DIR,'validation','validation_{:05d}.json'.format(epoch))
         os.makedirs(osp.dirname(outfile),exist_ok=True)

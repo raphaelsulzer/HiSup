@@ -84,7 +84,7 @@ class ValDataset(dset.coco.CocoDetection):
 
 
         if self._transforms is not None:
-            return self._transforms(image, ann)
+            return self._transforms(image,  ann)
         return image, ann
 
     def image(self, idx):
