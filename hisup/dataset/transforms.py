@@ -91,16 +91,16 @@ class ToTensor:
     def __call__(self, image, points, anns=None):
 
         if points is not None:
-            points = F.to_tensor(points)
+            points = F.to_tensor(points).to(torch.float32)
 
         if anns is None:
-            return F.to_tensor(image), points
+            return F.to_tensor(image).to(torch.float32), points
 
         for key, val in anns.items():
             if isinstance(val, np.ndarray):
                 anns[key] = torch.from_numpy(val)
 
-        return F.to_tensor(image), points, anns
+        return F.to_tensor(image).to(torch.float32), points, anns
 
 
 class Normalize:

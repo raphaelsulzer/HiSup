@@ -9,7 +9,7 @@ def build_transform(cfg):
     transforms = Compose(
         [ResizeImage(cfg.DATASETS.IMAGE.HEIGHT,
                      cfg.DATASETS.IMAGE.WIDTH),
-         ResamplePointCloud(cfg.DATASETS.PCD.N_POINTS),
+         # ResamplePointCloud(cfg.DATASETS.PCD.N_POINTS),
          ToTensor(),
          Normalize(cfg.DATASETS.IMAGE.PIXEL_MEAN,
                    cfg.DATASETS.IMAGE.PIXEL_STD,
@@ -31,7 +31,7 @@ def build_train_dataset(cfg):
                 cfg.DATASETS.IMAGE.WIDTH,
                 cfg.DATASETS.TARGET.HEIGHT,
                 cfg.DATASETS.TARGET.WIDTH),
-         ResamplePointCloud(cfg.DATASETS.PCD.N_POINTS),
+         # ResamplePointCloud(cfg.DATASETS.PCD.N_POINTS),
          ToTensor(),
          Normalize(cfg.DATASETS.IMAGE.PIXEL_MEAN,
                    cfg.DATASETS.IMAGE.PIXEL_STD,
@@ -57,7 +57,7 @@ def build_val_dataset(cfg):
     transforms = Compose(
         [ResizeImage(cfg.DATASETS.IMAGE.HEIGHT,
                      cfg.DATASETS.IMAGE.WIDTH),
-         ResamplePointCloud(cfg.DATASETS.PCD.N_POINTS),
+         # ResamplePointCloud(cfg.DATASETS.PCD.N_POINTS),
          ToTensor(),
          Normalize(cfg.DATASETS.IMAGE.PIXEL_MEAN,
                    cfg.DATASETS.IMAGE.PIXEL_STD,

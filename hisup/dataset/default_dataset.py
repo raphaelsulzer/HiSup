@@ -6,6 +6,7 @@ import os
 import copclib as copc
 import logging
 
+import torch
 from skimage import io
 from pycocotools.coco import COCO
 from shapely.geometry import Polygon
@@ -129,8 +130,17 @@ class DefaultDataset(Dataset):
             points[:,1] = img_info['height'] - points[:,1]
 
         else:
-            print(f'Lidar file {lidar_file_name} missing')
-            points = None
+            self.logger.warning(f'Lidar file {lidar_file_name} missing. Generating random point cloud.')
+
+            n = self.transform.transforms[1].n_points
+            n = 5
+
+            # make a random point cloud
+            x = np.random.uniform(0, img_info['width'], n)
+            y = np.random.uniform(0, img_info['height'], n)
+            z = np.random.uniform(0, 500, n)
+            points = np.vstack((x, y, z)).T
+
 
         return points
 
@@ -306,17 +316,29 @@ class DefaultDataset(Dataset):
 
 
 
-def collate_fn(batch, use_lidar, use_images):
+def collate_fn(batches, use_lidar, use_images):
 
 
     if use_images and not use_lidar:
-        return (default_collate([b[0] for b in batch]), None, [b[2] for b in batch])
+        return (default_collate([b[0] for b in batches]), None, [b[2] for b in batches])
     elif not use_images and use_lidar:
-        return (None, default_collate([b[0] for b in batch]), [b[2] for b in batch])
+        return (None, default_collate([b[0] for b in batches]), [b[2] for b in batches])
     elif use_images and use_lidar:
-        return (default_collate([b[0] for b in batch]),
-                default_collate([b[1] for b in batch]),
-                [b[2] for b in batch])
+
+        pcd_dict = dict()
+        pcds = []
+        pcd_idx = []
+        for i,batch in enumerate(batches):
+            pcds.append(batch[1].squeeze())
+            pcd_idx.extend([i]*batch[1].shape[1])
+
+        pcd_dict["coord"] = torch.cat(pcds, dim=0)
+        pcd_dict["feat"] = torch.cat(pcds, dim=0)
+        pcd_dict["batch"] = torch.IntTensor(pcd_idx)
+
+        return (default_collate([b[0] for b in batches]),
+                pcd_dict,
+                [b[2] for b in batches])
     else:
         raise ValueError("You must either activate 'use_images' or 'use_lidar'!")
 

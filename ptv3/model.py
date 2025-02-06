@@ -90,7 +90,7 @@ class Point(Dict):
             # if you don't want to operate GridSampling in data augmentation,
             # please add the following augmentation into your pipline:
             # dict(type="Copy", keys_dict={"grid_size": 0.01}),
-            # (adjust `grid_size` to what your want)
+            # (adjust `grid_size` to what you want)
             assert {"grid_size", "coord"}.issubset(self.keys())
             self["grid_coord"] = torch.div(
                 self.coord - self.coord.min(0)[0], self.grid_size, rounding_mode="trunc"

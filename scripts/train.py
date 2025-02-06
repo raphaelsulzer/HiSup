@@ -59,7 +59,7 @@ def parse_args():
     parser.add_argument("--use-lidar",
                         help="Activate use of lidar pointclouds as input",
                         type=bool,
-                        default=False,
+                        default=True,
                         )
 
     parser.add_argument("--use-images",
@@ -190,7 +190,8 @@ def train(cfg):
     model = BuildingDetector(cfg)
     model = model.to(device)
 
-    # pt_model = PointTransformerV3(in_channels=3)
+    pt_model = PointTransformerV3(in_channels=3)
+    pt_model = pt_model.to(device)
 
     train_dataset = build_train_dataset(cfg)
     val_dataset, gt_file = build_val_dataset(cfg)
@@ -229,9 +230,18 @@ def train(cfg):
     for epoch in range(start_epoch+1, arguments['max_epoch']+1):
         meters = MetricLogger(" ")
         model.train()
+        pt_model.train()
+
         arguments['epoch'] = epoch
 
         for it, (images, points, annotations) in enumerate(train_dataset):
+
+            points["coord"] = points["coord"].to(device)
+            points["feat"] = points["feat"].to(device)
+            points["batch"] = points["batch"].to(device)
+            points["grid_size"] = 0.5
+
+            point_feats = pt_model(points)
 
             data_time = time.time() - end
             images = images.to(device)
