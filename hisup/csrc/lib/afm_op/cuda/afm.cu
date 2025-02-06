@@ -1,8 +1,9 @@
 #include <ATen/ATen.h>
 #include <ATen/cuda/CUDAContext.h>
 
-#include <THC/THC.h>
-#include <THC/THCDeviceUtils.cuh>
+// RS: commented the 2 lines below for pytorch 2 support, which does not have THC included
+// #include <THC/THC.h>
+// #include <THC/THCDeviceUtils.cuh>
 
 #include <vector>
 #include <iostream>
@@ -115,6 +116,8 @@ std::tuple<at::Tensor,at::Tensor> afm_cuda(
     
     // THCudaFree(state, aflabel_dev);
     // THCudaFree(state, afmap_dev);
-    THCudaCheck(cudaGetLastError());
+
+    // RS: commented the line below for pytorch 2 support, which does not have THC included
+//     THCudaCheck(cudaGetLastError());
     return std::make_tuple(afmap, aflabel);
 }

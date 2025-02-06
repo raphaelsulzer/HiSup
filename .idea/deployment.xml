@@ -11,7 +11,7 @@
           <excludedPaths>
             <excludedPath local="true" path="$PROJECT_DIR$/data" />
             <excludedPath local="true" path="$PROJECT_DIR$/outputs" />
-            <excludedPath local="true" path="$PROJECT_DIR$/hisup/csrc" />
+            <excludedPath local="true" path="$PROJECT_DIR$/hisup/csrc/lib/afm_op/build" />
           </excludedPaths>
         </serverdata>
       </paths>
