@@ -75,14 +75,21 @@ def build_val_dataset(cfg):
     args['use_lidar'] = cfg.USE_LIDAR
     args['use_images'] = cfg.USE_IMAGES
 
+    collate_fn = partial(default_dataset.collate_fn, use_lidar= cfg.USE_LIDAR, use_images=cfg.USE_IMAGES)
+
     dataset = factory(**args)
     dataset = torch.utils.data.DataLoader(
         dataset,
         batch_size=cfg.SOLVER.IMS_PER_BATCH,
-        collate_fn=default_dataset.collate_fn,
+        collate_fn=collate_fn,
         num_workers=cfg.DATALOADER.NUM_WORKERS,
     )
     return dataset, dargs['args']['ann_file']
+
+
+
+
+
 
 def build_test_dataset(cfg):
     transforms = Compose(

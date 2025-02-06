@@ -240,24 +240,18 @@ class DefaultDataset(Dataset):
         else:
             points = None
 
-        # # augmentation
-        # if self.rotate:
-        #     ann['reminder'] = random.randint(0, 5)
-        # else:
-        #     ann['reminder'] = random.randint(0, 3)
-        #
-        # if len(ann['junctions']) > 0:
-        #     # apply augmentations, such as flip and rotate
-        #     image, points, ann = self.rotate(image, ann, points)
+        # augmentation
         if self.augment and len(ann['junctions']):
-            ann['reminder'] = random.randint(0, 5)
+            ann['reminder'] = random.randint(0, 5) # originally, b = 3, meaning only do flips for augmentation, no rotation
             image, points, ann = self.augmentation(image, ann, points)
-
 
         # self.debug_vis(image, points, ann)
 
+        ann.update(img_info)
+
         if self.transform is not None:
             return self.transform(image, points, ann)
+
 
         return image, points, ann
 

@@ -159,14 +159,11 @@ def validation(model,val_dataset,device,outfile,gtfile):
             batch_polygons = output['polys_pred']
 
         for b in range(batch_size):
-            filename = annotations[b]['filename']
-            # img_id = int(filename[:-4])
-            img_id = int(filename.split('_')[0][5:])
 
             scores = batch_scores[b]
             polys = batch_polygons[b]
 
-            image_result = generate_coco_ann(polys, scores, img_id)
+            image_result = generate_coco_ann(polys, scores, annotations[b]["id"])
             if len(image_result) != 0:
                 results.extend(image_result)
 
@@ -263,8 +260,8 @@ def train(cfg):
                          it,len(train_dataset),
                          optimizer.param_groups[0]["lr"])
 
-            if it % 200 == 0 and it > 0:
-                break
+            # if it % 100 == 0 and it > 0:
+            #     break
 
         outfile = osp.join(cfg.OUTPUT_DIR,'validation','validation_{:05d}.json'.format(epoch))
         os.makedirs(osp.dirname(outfile),exist_ok=True)
