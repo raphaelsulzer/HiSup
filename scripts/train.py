@@ -263,7 +263,7 @@ def train(cfg):
                          it,len(train_dataset),
                          optimizer.param_groups[0]["lr"])
 
-            # if it % 200 == 0 and it > 0:
+            if it % 200 == 0 and it > 0:
                 break
 
         outfile = osp.join(cfg.OUTPUT_DIR,'validation','validation_{:05d}.json'.format(epoch))
