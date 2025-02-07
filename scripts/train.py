@@ -20,10 +20,10 @@ from hisup.utils.miscellaneous import save_config
 from hisup.utils.metric_logger import MetricLogger
 from hisup.utils.checkpoint import DetectronCheckpointer
 from hisup.utils.metrics.cIoU import compute_IoU_cIoU
-
 from tools.test_pipelines import generate_coco_ann
 
-from ptv3.model import PointTransformerV3
+# from point_encoder.encoder import PointPillarsEncoder
+from hisup.backbones.pointpillars_backbone import LiDAR_Encoder
 
 import torch
 torch.multiprocessing.set_sharing_strategy('file_system')
@@ -190,8 +190,7 @@ def train(cfg):
     model = BuildingDetector(cfg)
     model = model.to(device)
 
-    pt_model = PointTransformerV3(in_channels=3)
-    pt_model = pt_model.to(device)
+    pt_model = LiDAR_Encoder(voxel_size=[0.16,0.16,2000],point_cloud_range=[0,0,-1000,512,512,1000]).to(device)
 
     train_dataset = build_train_dataset(cfg)
     val_dataset, gt_file = build_val_dataset(cfg)
@@ -236,12 +235,8 @@ def train(cfg):
 
         for it, (images, points, annotations) in enumerate(train_dataset):
 
-            points["coord"] = points["coord"].to(device)
-            points["feat"] = points["feat"].to(device)
-            points["batch"] = points["batch"].to(device)
-            points["grid_size"] = 0.5
-
-            point_feats = pt_model(points)
+            points = list(map(lambda x: x.to(device), points))
+            feats = pt_model(points)
 
             data_time = time.time() - end
             images = images.to(device)

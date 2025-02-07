@@ -325,19 +325,22 @@ def collate_fn(batches, use_lidar, use_images):
         return (None, default_collate([b[0] for b in batches]), [b[2] for b in batches])
     elif use_images and use_lidar:
 
-        pcd_dict = dict()
-        pcds = []
-        pcd_idx = []
-        for i,batch in enumerate(batches):
-            pcds.append(batch[1].squeeze())
-            pcd_idx.extend([i]*batch[1].shape[1])
+        # pcd_dict = dict()
+        # pcds = []
+        # pcd_idx = []
+        # for i,batch in enumerate(batches):
+        #     pcds.append(batch[1].squeeze())
+        #     pcd_idx.extend([i]*batch[1].shape[1])
+        #
+        # pcd_dict["coord"] = torch.cat(pcds, dim=0)
+        # pcd_dict["batch"] = torch.IntTensor(pcd_idx)
 
-        pcd_dict["coord"] = torch.cat(pcds, dim=0)
-        pcd_dict["feat"] = torch.cat(pcds, dim=0)
-        pcd_dict["batch"] = torch.IntTensor(pcd_idx)
+        pcds = []
+        for batch in batches:
+            pcds.append(batch[1].squeeze())
 
         return (default_collate([b[0] for b in batches]),
-                pcd_dict,
+                pcds,
                 [b[2] for b in batches])
     else:
         raise ValueError("You must either activate 'use_images' or 'use_lidar'!")
