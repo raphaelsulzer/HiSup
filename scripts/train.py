@@ -190,7 +190,7 @@ def train(cfg):
     model = BuildingDetector(cfg)
     model = model.to(device)
 
-    pt_model = LiDAR_Encoder(voxel_size=[0.16,0.16,2000],point_cloud_range=[0,0,-1000,512,512,1000]).to(device)
+    pt_model = LiDAR_Encoder(voxel_size=[1,1,512],point_cloud_range=[0,0,0,512,512,512],max_voxels=(32000,32000),max_num_points=32).to(device)
 
     train_dataset = build_train_dataset(cfg)
     val_dataset, gt_file = build_val_dataset(cfg)

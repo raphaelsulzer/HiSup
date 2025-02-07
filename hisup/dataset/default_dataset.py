@@ -117,6 +117,11 @@ class DefaultDataset(Dataset):
 
     def load_lidar_points(self, lidar_file_name, img_info):
 
+        def min_max_normalize(arr, min_val=0, max_val=1):
+            arr_min = np.min(arr)
+            arr_max = np.max(arr)
+            return min_val + (arr - arr_min) * (max_val - min_val) / (arr_max - arr_min)
+
         if osp.isfile(lidar_file_name):
             # Create a reader object
             reader = copc.FileReader(lidar_file_name)
@@ -129,6 +134,8 @@ class DefaultDataset(Dataset):
             points[:,:2] = (points[:,:2] - img_info['top_left'])/img_info.get('res_x',0.25)
             points[:,1] = img_info['height'] - points[:,1]
 
+            points[:, -1] = min_max_normalize(points[:,-1], 0, 512)
+
         else:
             self.logger.warning(f'Lidar file {lidar_file_name} missing. Generating random point cloud.')
 
@@ -138,7 +145,7 @@ class DefaultDataset(Dataset):
             # make a random point cloud
             x = np.random.uniform(0, img_info['width'], n)
             y = np.random.uniform(0, img_info['height'], n)
-            z = np.random.uniform(0, 500, n)
+            z = np.random.uniform(0, 512, n)
             points = np.vstack((x, y, z)).T
 
 
