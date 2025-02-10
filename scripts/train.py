@@ -8,10 +8,12 @@ import datetime
 import wandb
 import os.path as osp
 import json
+import shutil
 from tqdm import tqdm
 
 from hisup.config import cfg
 from hisup.detector import BuildingDetector
+from hisup.detector_lidar import LiDARBuildingDetector
 from hisup.dataset import build_train_dataset, build_val_dataset
 from hisup.utils.comm import to_single_device
 from hisup.solver import make_lr_scheduler, make_optimizer
@@ -103,12 +105,10 @@ def setup_wandb(cfg):
     # start a new wandb run to track this script
     wandb.init(
         # set the wandb project where this run will be logged
-        project="HiSup image only",
+        project="HiSup",
         # track hyperparameters and run metadata
         config=dict(cfg)
     )
-
-
 
 def log_loss(meters,epoch_size,max_epoch,epoch,it,maxiter,learning_rate):
 
@@ -149,9 +149,11 @@ def validation(model,val_dataset,device,outfile,gtfile):
     for it, (images, points, annotations) in enumerate(tqdm(val_dataset, desc="Validation")):
         with torch.no_grad():
 
+            points = list(map(lambda x: x.to(device), points))
+
             images = images.to(device)
             annotations = to_single_device(annotations, device)
-            output, _ = model(images, annotations)
+            output, _ = model(images, points, annotations)
             output = to_single_device(output, 'cpu')
 
             batch_size = images.size(0)
@@ -187,10 +189,11 @@ def train(cfg):
 
     logger = logging.getLogger("Training")
     device = cfg.MODEL.DEVICE
-    model = BuildingDetector(cfg)
+    # model = BuildingDetector(cfg)
+    model = LiDARBuildingDetector(cfg)
     model = model.to(device)
 
-    pt_model = LiDAR_Encoder(voxel_size=[1,1,512],point_cloud_range=[0,0,0,512,512,512],max_voxels=(32000,32000),max_num_points=32).to(device)
+    # pt_model = LiDAR_Encoder().to(device)
 
     train_dataset = build_train_dataset(cfg)
     val_dataset, gt_file = build_val_dataset(cfg)
@@ -229,20 +232,18 @@ def train(cfg):
     for epoch in range(start_epoch+1, arguments['max_epoch']+1):
         meters = MetricLogger(" ")
         model.train()
-        pt_model.train()
 
         arguments['epoch'] = epoch
 
         for it, (images, points, annotations) in enumerate(train_dataset):
 
             points = list(map(lambda x: x.to(device), points))
-            feats = pt_model(points)
 
             data_time = time.time() - end
             images = images.to(device)
             annotations = to_single_device(annotations,device)
             
-            loss_dict, _ = model(images,annotations)
+            loss_dict, _ = model(images,points,annotations)
             total_loss = loss_reducer(loss_dict)
 
             with torch.no_grad():
@@ -265,7 +266,7 @@ def train(cfg):
                          it,len(train_dataset),
                          optimizer.param_groups[0]["lr"])
 
-            # if it % 100 == 0 and it > 0:
+            # if it % 60 == 0 and it > 0:
             #     break
 
         outfile = osp.join(cfg.OUTPUT_DIR,'validation','validation_{:05d}.json'.format(epoch))
@@ -288,6 +289,7 @@ def train(cfg):
             logger.info(f"New best IoU of {iou}")
             best_iou = iou
             checkpointer.save('model_best')
+            shutil.copyfile(outfile,osp.join(cfg.OUTPUT_DIR,'validation','validation_best.json'))
 
         scheduler.step()
 

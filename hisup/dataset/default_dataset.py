@@ -8,6 +8,7 @@ import logging
 
 import torch
 from skimage import io
+from sklearn.preprocessing import MinMaxScaler
 from pycocotools.coco import COCO
 from shapely.geometry import Polygon
 from torch.utils.data import Dataset
@@ -115,12 +116,8 @@ class DefaultDataset(Dataset):
         return image, points, ann
 
 
-    def load_lidar_points(self, lidar_file_name, img_info):
+    def load_lidar_points(self, lidar_file_name, img_info, z_scale=(0,512)):
 
-        def min_max_normalize(arr, min_val=0, max_val=1):
-            arr_min = np.min(arr)
-            arr_max = np.max(arr)
-            return min_val + (arr - arr_min) * (max_val - min_val) / (arr_max - arr_min)
 
         if osp.isfile(lidar_file_name):
             # Create a reader object
@@ -134,18 +131,18 @@ class DefaultDataset(Dataset):
             points[:,:2] = (points[:,:2] - img_info['top_left'])/img_info.get('res_x',0.25)
             points[:,1] = img_info['height'] - points[:,1]
 
-            points[:, -1] = min_max_normalize(points[:,-1], 0, 512)
+            # scale z vals to [0,512]
+            scaler = MinMaxScaler(feature_range=z_scale)  # Change range as needed
+            points[:, -1] = scaler.fit_transform(points[:,-1].reshape(-1,1)).squeeze()
 
         else:
-            self.logger.warning(f'Lidar file {lidar_file_name} missing. Generating random point cloud.')
+            self.logger.debug(f'Lidar file {lidar_file_name} missing. Generating random point cloud.')
 
-            n = self.transform.transforms[1].n_points
             n = 5
-
             # make a random point cloud
             x = np.random.uniform(0, img_info['width'], n)
             y = np.random.uniform(0, img_info['height'], n)
-            z = np.random.uniform(0, 512, n)
+            z = np.random.uniform(z_scale[0], z_scale[1], n)
             points = np.vstack((x, y, z)).T
 
 
@@ -332,19 +329,9 @@ def collate_fn(batches, use_lidar, use_images):
         return (None, default_collate([b[0] for b in batches]), [b[2] for b in batches])
     elif use_images and use_lidar:
 
-        # pcd_dict = dict()
-        # pcds = []
-        # pcd_idx = []
-        # for i,batch in enumerate(batches):
-        #     pcds.append(batch[1].squeeze())
-        #     pcd_idx.extend([i]*batch[1].shape[1])
-        #
-        # pcd_dict["coord"] = torch.cat(pcds, dim=0)
-        # pcd_dict["batch"] = torch.IntTensor(pcd_idx)
-
         pcds = []
         for batch in batches:
-            pcds.append(batch[1].squeeze())
+            pcds.append(batch[1][0,:,:])
 
         return (default_collate([b[0] for b in batches]),
                 pcds,
