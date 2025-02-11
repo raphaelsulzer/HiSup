@@ -1,17 +1,18 @@
 from hisup.detector_default import *
-from hisup.backbones.multi_task_head import MultitaskHead
-
 from pointpillars.model import PillarLayer, PillarEncoder
 
-class LiDARBuildingDetector(BuildingDetector):
+
+class MultiModalBuildingDetector(BuildingDetector):
     def __init__(self, cfg):
         super().__init__(cfg)
 
-        res = 512
-        voxel_size=(cfg.MODEL.POINT_ENCODER.voxel_size,cfg.MODEL.POINT_ENCODER.voxel_size,res)
-        point_cloud_range=[0,0,0,res,res,res]
-        max_voxels=(cfg.MODEL.POINT_ENCODER.max_voxels,cfg.MODEL.POINT_ENCODER.max_voxels) # (train,test)
-        max_num_points = cfg.MODEL.POINT_ENCODER.max_num_points
+        self.backbone = build_backbone(cfg)
+        self.backbone_name = cfg.MODEL.NAME
+
+        voxel_size=[4,4,512]
+        point_cloud_range=[0,0,0,512,512,512]
+        max_voxels=(16000,16000)
+        max_num_points=16
 
         self.pillar_layer = PillarLayer(voxel_size=voxel_size,
                                         point_cloud_range=point_cloud_range,
@@ -21,13 +22,11 @@ class LiDARBuildingDetector(BuildingDetector):
         self.pillar_encoder = PillarEncoder(voxel_size=voxel_size,
                                             point_cloud_range=point_cloud_range,
                                             in_channel=8,
-                                            out_channel=cfg.MODEL.OUT_FEATURE_CHANNELS)
+                                            out_channel=256)
 
-        head_size = cfg.MODEL.HEAD_SIZE
-        num_class = sum(sum(head_size, []))
-
-
-        self.classification_head = MultitaskHead(input_channels=cfg.MODEL.OUT_FEATURE_CHANNELS,num_class=num_class,head_size=head_size)
+        self.image_lidar_backbone_fusion = self._make_conv(cfg.MODEL.OUT_FEATURE_CHANNELS*2,
+                                                           cfg.MODEL.OUT_FEATURE_CHANNELS,
+                                                           cfg.MODEL.OUT_FEATURE_CHANNELS)
 
     def forward(self, images, points, annotations=None):
         if self.training:
@@ -37,8 +36,11 @@ class LiDARBuildingDetector(BuildingDetector):
 
     def forward_test(self, images, points):
 
-        features = self.forward_points(points)
-        outputs = self.classification_head(features)
+        outputs, features = self.backbone(images)
+
+        # image lidar fusion
+        features = torch.cat((features, self.forward_points(points)), axis=1)
+        features = self.image_lidar_backbone_fusion(features)
 
         jloc_feature = self.jloc_head(features)
         afm_feature = self.afm_head(features)
@@ -111,13 +113,44 @@ class LiDARBuildingDetector(BuildingDetector):
 
         return pillar_features
 
+    def jloc_vis(self, tensor):
+        import matplotlib.pyplot as plt
+        import matplotlib.colors as mcolors
+
+        # Define color map based on the range of values {0, 1, 2}
+        cmap = mcolors.ListedColormap([(0.5, 0.5, 0.5, 0.5), 'green', 'red'])
+        bounds = [0, 1, 2, 3]  # Define the range of values
+        norm = mcolors.BoundaryNorm(bounds, cmap.N)
+
+        # Plotting the tensor values as an image
+        plt.imshow(tensor.numpy(), cmap=cmap, norm=norm)
+
+        # Add legend manually and place it outside the axis
+        legend_labels = ['outside', 'concave', 'convex']
+        colors = ['grey', 'green', 'red']
+        handles = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=10) for color in
+                   colors]
+        plt.legend(handles, legend_labels, title="Value", loc='upper left', bbox_to_anchor=(1, 1))
+
+        # Title and layout
+        plt.title("jloc Tensor")
+        plt.axis('off')  # Optionally turn off the axis
+        plt.tight_layout()
+
+        # Show the plot
+        plt.show()
+
     def forward_train(self, images, points, annotations=None):
         self.train_step += 1
 
         targets, metas = self.encoder(annotations)
+        outputs, features = self.backbone(images)
 
-        features = self.forward_points(points)
-        outputs = self.classification_head(features)
+        self.jloc_vis(targets['jloc'][0, 0, :, :].cpu())
+
+        # image lidar fusion
+        features = torch.cat((features, self.forward_points(points)), axis=1)
+        features = self.image_lidar_backbone_fusion(features)
 
         loss_dict = {
             'loss_jloc': 0.0,
@@ -143,7 +176,7 @@ class LiDARBuildingDetector(BuildingDetector):
 
         if targets is not None:
             loss_dict['loss_jloc'] += F.cross_entropy(jloc_pred, targets['jloc'].squeeze(dim=1))
-            loss_dict['loss_joff'] += sigmoid_l1_loss(outputs[:, :], targets['joff'], -0.5, targets['jloc'])
+            loss_dict['loss_joff'] += sigmoid_l1_loss(outputs, targets['joff'], -0.5, targets['jloc'])
             loss_dict['loss_mask'] += F.cross_entropy(mask_pred, targets['mask'].squeeze(dim=1).long())
             loss_dict['loss_afm'] += F.l1_loss(afm_pred, targets['afmap'])
             loss_dict['loss_remask'] += F.cross_entropy(remask_pred, targets['mask'].squeeze(dim=1).long())

@@ -6,7 +6,6 @@ import os
 import copclib as copc
 import logging
 
-import torch
 from skimage import io
 from sklearn.preprocessing import MinMaxScaler
 from pycocotools.coco import COCO
@@ -52,7 +51,8 @@ class DefaultDataset(Dataset):
 
         if reminder == 1:  # horizontal flip
             self.logger.debug('apply horizontal flip')
-            image = image[:, ::-1, :]
+            if image is not None:
+                image = image[:, ::-1, :]
             if points is not None:
                 points[:, 0] = width - points[:, 0]
             ann['junctions'][:, 0] = width - ann['junctions'][:, 0]
@@ -62,7 +62,8 @@ class DefaultDataset(Dataset):
             seg_mask = np.fliplr(seg_mask)
         elif reminder == 2:  # vertical flip
             self.logger.debug('apply vertical flip')
-            image = image[::-1, :, :]
+            if image is not None:
+                image = image[::-1, :, :]
             if points is not None:
                 points[:, 1] = height - points[:, 1]
             ann['junctions'][:, 1] = height - ann['junctions'][:, 1]
@@ -72,7 +73,8 @@ class DefaultDataset(Dataset):
             seg_mask = np.flipud(seg_mask)
         elif reminder == 3:  # horizontal and vertical flip
             self.logger.debug('apply horizontal and vertical flip')
-            image = image[::-1, ::-1, :]
+            if image is not None:
+                image = image[::-1, ::-1, :]
             if points is not None:
                 points[:, 0] = width - points[:, 0]
                 points[:, 1] = height - points[:, 1]
@@ -93,7 +95,8 @@ class DefaultDataset(Dataset):
                 points = np.dot(points, R.T)
                 points[:, :2] = points[:, :2] + [width / 2, height / 2]
             rot_matrix = cv2.getRotationMatrix2D((int(width / 2), (height / 2)), 90, 1)
-            image = cv2.warpAffine(image, rot_matrix, (width, height))
+            if image is not None:
+                image = cv2.warpAffine(image, rot_matrix, (width, height))
             seg_mask = cv2.warpAffine(seg_mask, rot_matrix, (width, height))
             ann['junctions'] = np.asarray([affine_transform(p, rot_matrix) for p in ann['junctions']], dtype=np.float32)
             ann['bbox'] = np.asarray([affine_transform(p, rot_matrix) for p in ann['bbox']], dtype=np.float32)
@@ -105,7 +108,8 @@ class DefaultDataset(Dataset):
                 points = np.dot(points, R.T)
                 points[:, :2] = points[:, :2] + [width / 2, height / 2]
             rot_matrix = cv2.getRotationMatrix2D((int(width / 2), (height / 2)), 270, 1)
-            image = cv2.warpAffine(image, rot_matrix, (width, height))
+            if image is not None:
+                image = cv2.warpAffine(image, rot_matrix, (width, height))
             seg_mask = cv2.warpAffine(seg_mask, rot_matrix, (width, height))
             ann['junctions'] = np.asarray([affine_transform(p, rot_matrix) for p in ann['junctions']], dtype=np.float32)
             ann['bbox'] = np.asarray([affine_transform(p, rot_matrix) for p in ann['bbox']], dtype=np.float32)
@@ -322,13 +326,17 @@ class DefaultDataset(Dataset):
 
 def collate_fn(batches, use_lidar, use_images):
 
-
     if use_images and not use_lidar:
         return (default_collate([b[0] for b in batches]), None, [b[2] for b in batches])
-    elif not use_images and use_lidar:
-        return (None, default_collate([b[0] for b in batches]), [b[2] for b in batches])
-    elif use_images and use_lidar:
 
+    elif not use_images and use_lidar:
+        pcds = []
+        for batch in batches:
+            pcds.append(batch[1][0,:,:])
+
+        return (None, pcds, [b[2] for b in batches])
+
+    elif use_images and use_lidar:
         pcds = []
         for batch in batches:
             pcds.append(batch[1][0,:,:])
@@ -337,5 +345,5 @@ def collate_fn(batches, use_lidar, use_images):
                 pcds,
                 [b[2] for b in batches])
     else:
-        raise ValueError("You must either activate 'use_images' or 'use_lidar'!")
+        raise NotImplementedError("You must either activate 'use_images' or 'use_lidar'")
 

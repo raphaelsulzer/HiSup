@@ -12,8 +12,6 @@ DATALOADER:
   NUM_WORKERS: 8
 
 DATASETS:
-  PCD:
-    N_POINTS: 50000
   IMAGE:
     PIXEL_MEAN: [108.9177, 114.1638, 100.8611]
     PIXEL_STD: [49.3129, 45.7661, 48.6514]
@@ -21,8 +19,8 @@ DATASETS:
     HEIGHT: 512
     WIDTH: 512
   TARGET:
-    HEIGHT: 128
-    WIDTH: 128
+    HEIGHT: 256
+    WIDTH: 256
   ORIGIN:
     HEIGHT: 512
     WIDTH: 512
@@ -40,5 +38,9 @@ MODEL:
     loss_mask: 1.0
     loss_afm : 0.1
     loss_remask : 1.0
+  POINT_ENCODER:
+    voxel_size: 2
+    max_voxels: 32000
+    max_num_points: 32
 
 OUTPUT_DIR: "./outputs/lidarpoly_hrnet48"

@@ -8,12 +8,13 @@ import datetime
 import wandb
 import os.path as osp
 import json
-import shutil
 from tqdm import tqdm
 
 from hisup.config import cfg
-from hisup.detector import BuildingDetector
+from hisup.detector_images import BuildingDetector
+from hisup.detector_both import MultiModalBuildingDetector
 from hisup.detector_lidar import LiDARBuildingDetector
+from hisup.detector_images import ImageBuildingDetector
 from hisup.dataset import build_train_dataset, build_val_dataset
 from hisup.utils.comm import to_single_device
 from hisup.solver import make_lr_scheduler, make_optimizer
@@ -23,9 +24,6 @@ from hisup.utils.metric_logger import MetricLogger
 from hisup.utils.checkpoint import DetectronCheckpointer
 from hisup.utils.metrics.cIoU import compute_IoU_cIoU
 from tools.test_pipelines import generate_coco_ann
-
-# from point_encoder.encoder import PointPillarsEncoder
-from hisup.backbones.pointpillars_backbone import LiDAR_Encoder
 
 import torch
 torch.multiprocessing.set_sharing_strategy('file_system')
@@ -67,7 +65,7 @@ def parse_args():
     parser.add_argument("--use-images",
                         help="Activate use of images as input",
                         type=bool,
-                        default=True,
+                        default=False,
                         )
     
     parser.add_argument("--clean",
@@ -149,14 +147,17 @@ def validation(model,val_dataset,device,outfile,gtfile):
     for it, (images, points, annotations) in enumerate(tqdm(val_dataset, desc="Validation")):
         with torch.no_grad():
 
-            points = list(map(lambda x: x.to(device), points))
+            if points is not None:
+                points = list(map(lambda x: x.to(device), points))
+                batch_size = len(points)
+            if images is not None:
+                images = images.to(device)
+                batch_size = images.size(0)
 
-            images = images.to(device)
             annotations = to_single_device(annotations, device)
-            output, _ = model(images, points, annotations)
+            output, _ = model(images, points)
             output = to_single_device(output, 'cpu')
 
-            batch_size = images.size(0)
             batch_scores = output['scores']
             batch_polygons = output['polys_pred']
 
@@ -189,11 +190,17 @@ def train(cfg):
 
     logger = logging.getLogger("Training")
     device = cfg.MODEL.DEVICE
-    # model = BuildingDetector(cfg)
-    model = LiDARBuildingDetector(cfg)
-    model = model.to(device)
 
-    # pt_model = LiDAR_Encoder().to(device)
+    if cfg.USE_IMAGES and not cfg.USE_LIDAR:
+        model = ImageBuildingDetector(cfg)
+    elif cfg.USE_IMAGES and cfg.USE_LIDAR:
+        model = MultiModalBuildingDetector(cfg)
+    elif not cfg.USE_IMAGES and cfg.USE_LIDAR:
+        model = LiDARBuildingDetector(cfg)
+    else:
+        raise NotImplementedError
+
+    model = model.to(device)
 
     train_dataset = build_train_dataset(cfg)
     val_dataset, gt_file = build_val_dataset(cfg)
@@ -236,11 +243,14 @@ def train(cfg):
         arguments['epoch'] = epoch
 
         for it, (images, points, annotations) in enumerate(train_dataset):
-
-            points = list(map(lambda x: x.to(device), points))
-
             data_time = time.time() - end
-            images = images.to(device)
+
+            if points is not None:
+                points = list(map(lambda x: x.to(device), points))
+
+            if images is not None:
+                images = images.to(device)
+
             annotations = to_single_device(annotations,device)
             
             loss_dict, _ = model(images,points,annotations)
@@ -346,4 +356,6 @@ if __name__ == "__main__":
     save_config(cfg, output_config_path)
     set_random_seed(args.seed, True)
     train(cfg)
+
+    # TODO: I need to remove tiles that have buildings but no lidar information, otherwise it becomes impossible for the lidar only models to do anything
 

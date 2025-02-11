@@ -55,8 +55,8 @@ def max_angle_error_eval(annFile, resFile):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--gt-file", default="/home/rsulzer/data/LIDAR_POLY/annotations_val.json")
-    parser.add_argument("--dt-file", default="/home/rsulzer/python/HiSup/outputs/lidarpoly_hrnet48/lidarpoly_val.json")
+    parser.add_argument("--gt-file", default="/home/rsulzer/data/LIDAR_POLY/Switzerland/processed/annotations_val.json")
+    parser.add_argument("--dt-file", default="/home/rsulzer/python/HiSup/outputs/lidarpoly_hrnet48/image_only_bs8/validation/validation_best.json")
     parser.add_argument("--eval-type", default="ciou", choices=["coco_iou", "boundary_iou", "polis", "angle", "ciou"])
     args = parser.parse_args()
 

@@ -50,7 +50,7 @@ class ResamplePointCloud:
 
 
 
-class Resize:
+class ResizeImageAndAnnotation:
     def __init__(self, image_height, image_width, ann_height, ann_width):
         self.image_height = image_height
         self.image_width = image_width
@@ -58,8 +58,9 @@ class Resize:
         self.ann_width = ann_width
 
     def __call__(self, image, points, ann):
-        image = resize(image, (self.image_height, self.image_width))
-        image = np.array(image, dtype=np.float32) / 255.0
+        if image is not None:
+            image = resize(image, (self.image_height, self.image_width))
+            image = np.array(image, dtype=np.float32) / 255.0
 
         sx = self.ann_width / ann['width']
         sy = self.ann_height / ann['height']
@@ -93,6 +94,9 @@ class ToTensor:
         if points is not None:
             points = F.to_tensor(points).to(torch.float32)
 
+        if image is not None:
+            image = F.to_tensor(image).to(torch.float32)
+
         if anns is None:
             return F.to_tensor(image).to(torch.float32), points
 
@@ -100,7 +104,7 @@ class ToTensor:
             if isinstance(val, np.ndarray):
                 anns[key] = torch.from_numpy(val)
 
-        return F.to_tensor(image).to(torch.float32), points, anns
+        return image, points, anns
 
 
 class Normalize:

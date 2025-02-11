@@ -25,18 +25,29 @@ def build_train_dataset(cfg):
     dargs = DatasetCatalog.get(name)
 
     factory = getattr(train_dataset, dargs['factory'])
+    if cfg.USE_IMAGES:
+       transforms = Compose(
+            [ResizeImageAndAnnotation(cfg.DATASETS.IMAGE.HEIGHT,
+                                      cfg.DATASETS.IMAGE.WIDTH,
+                                      cfg.DATASETS.TARGET.HEIGHT,
+                                      cfg.DATASETS.TARGET.WIDTH),
+             ToTensor(),
+             Normalize(cfg.DATASETS.IMAGE.PIXEL_MEAN,
+                       cfg.DATASETS.IMAGE.PIXEL_STD,
+                       cfg.DATASETS.IMAGE.TO_255),
+             ])
+    else:
+       transforms = Compose(
+           [ResizeImageAndAnnotation(cfg.DATASETS.IMAGE.HEIGHT,
+                                     cfg.DATASETS.IMAGE.WIDTH,
+                                     cfg.DATASETS.TARGET.HEIGHT,
+                                     cfg.DATASETS.TARGET.WIDTH),
+            ToTensor()]
+       )
+
+
     args = dargs['args']
-    args['transform'] = Compose(
-        [Resize(cfg.DATASETS.IMAGE.HEIGHT,
-                cfg.DATASETS.IMAGE.WIDTH,
-                cfg.DATASETS.TARGET.HEIGHT,
-                cfg.DATASETS.TARGET.WIDTH),
-         # ResamplePointCloud(cfg.DATASETS.PCD.N_POINTS),
-         ToTensor(),
-         Normalize(cfg.DATASETS.IMAGE.PIXEL_MEAN,
-                   cfg.DATASETS.IMAGE.PIXEL_STD,
-                   cfg.DATASETS.IMAGE.TO_255),
-         ])
+    args['transform'] = transforms
     args['augment'] = cfg.DATASETS.ROTATE_F
     args['use_lidar'] = cfg.USE_LIDAR
     args['use_images'] = cfg.USE_IMAGES
@@ -54,16 +65,21 @@ def build_train_dataset(cfg):
 
 
 def build_val_dataset(cfg):
-    transforms = Compose(
-        [ResizeImage(cfg.DATASETS.IMAGE.HEIGHT,
-                     cfg.DATASETS.IMAGE.WIDTH),
-         # ResamplePointCloud(cfg.DATASETS.PCD.N_POINTS),
-         ToTensor(),
-         Normalize(cfg.DATASETS.IMAGE.PIXEL_MEAN,
-                   cfg.DATASETS.IMAGE.PIXEL_STD,
-                   cfg.DATASETS.IMAGE.TO_255)
-         ]
-    )
+
+    if cfg.USE_IMAGES:
+        transforms = Compose(
+            [ResizeImage(cfg.DATASETS.IMAGE.HEIGHT,
+                         cfg.DATASETS.IMAGE.WIDTH),
+             ToTensor(),
+             Normalize(cfg.DATASETS.IMAGE.PIXEL_MEAN,
+                       cfg.DATASETS.IMAGE.PIXEL_STD,
+                       cfg.DATASETS.IMAGE.TO_255)
+             ]
+        )
+    else:
+        transforms = Compose(
+            [ToTensor()]
+        )
 
     name = cfg.DATASETS.VAL[0]
     dargs = DatasetCatalog.get(name)

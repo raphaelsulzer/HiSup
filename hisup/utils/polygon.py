@@ -152,7 +152,6 @@ def get_poly_crowdai(prop, mask_pred, junctions):
         if h[3] != -1:
             if cv2.contourArea(contour) >= 50:
                 c = inn_c_to_poly_coco(contour, im_h, im_w)
-            #c = inn_c_to_poly_coco(contour, im_h, im_w)
         if len(c) > 3:
             init_poly = c.copy()
             if len(junctions) > 0:

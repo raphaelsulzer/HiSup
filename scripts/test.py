@@ -3,7 +3,7 @@ import argparse
 import logging
 
 from hisup.config import cfg
-from hisup.detector import BuildingDetector, get_pretrained_model
+from hisup.detector_images import BuildingDetector, get_pretrained_model
 from hisup.utils.logger import setup_logger
 from hisup.utils.checkpoint import DetectronCheckpointer
 from tools.test_pipelines import TestPipeline

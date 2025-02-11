@@ -8,7 +8,7 @@ import argparse
 import logging
 import torch.nn as nn
 
-from hisup.detector import BuildingDetector
+from hisup.detector_images import BuildingDetector
 from hisup.config import cfg
 from hisup.utils.comm import to_device
 from hisup.dataset import build_train_dataset_multi
