@@ -5,7 +5,6 @@ import torch.nn.functional as F
 from math import log
 from torch import nn
 from hisup.encoder import Encoder
-from hisup.backbones import build_backbone
 from hisup.utils.polygon import generate_polygon
 from hisup.utils.polygon import get_pred_junctions
 from skimage.measure import label, regionprops

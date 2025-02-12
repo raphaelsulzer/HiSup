@@ -1,7 +1,7 @@
 from hisup.detector_default import *
 from hisup.backbones.multi_task_head import MultitaskHead
 
-from pointpillars.model import PillarLayer, PillarEncoder
+from pointpillars.model import PillarLayer, PillarEncoder, Backbone, Neck
 
 class LiDARBuildingDetector(BuildingDetector):
     def __init__(self, cfg):
@@ -21,7 +21,19 @@ class LiDARBuildingDetector(BuildingDetector):
         self.pillar_encoder = PillarEncoder(voxel_size=voxel_size,
                                             point_cloud_range=point_cloud_range,
                                             in_channel=8,
-                                            out_channel=cfg.MODEL.OUT_FEATURE_CHANNELS)
+                                            out_channel=64)
+
+        layer_strides = [1 if cfg.MODEL.POINT_ENCODER.voxel_size == 4 else 2, 2, 2]
+
+        self.pillar_backbone = Backbone(in_channel=64,
+                                 out_channels=[64, 128, 256],
+                                 layer_nums=[3, 5, 5],
+                                        layer_strides=layer_strides)
+
+        self.pillar_neck = Neck(in_channels=[64, 128, 256],
+                         upsample_strides=[1, 2, 4],
+                         out_channels=[128, 128, 128])
+
 
         head_size = cfg.MODEL.HEAD_SIZE
         num_class = sum(sum(head_size, []))
@@ -103,11 +115,18 @@ class LiDARBuildingDetector(BuildingDetector):
         #                              num_points_per_pillar: (p1 + p2 + ... + pb, ), (b: batch size)
         pillars, coors_batch, npoints_per_pillar = self.pillar_layer(batched_pts)
 
+        # print(f"Average number of pillars per sample: {pillars.shape[0]/len(batched_pts)}")
+        # print(f"Average number of points per pillar: {npoints_per_pillar.cpu().numpy().mean()}")
+
         # pillars: (p1 + p2 + ... + pb, num_points, c), c = 4
         # coors_batch: (p1 + p2 + ... + pb, 1 + 3)
         # npoints_per_pillar: (p1 + p2 + ... + pb, )
         #                     -> pillar_features: (bs, out_channel, y_l, x_l)
         pillar_features = self.pillar_encoder(pillars, coors_batch, npoints_per_pillar)
+
+        pillar_features = self.pillar_backbone(pillar_features)
+
+        pillar_features = self.pillar_neck(pillar_features)
 
         return pillar_features
 

@@ -1,7 +1,10 @@
 from hisup.detector_default import *
 from hisup.utils.polygon import generate_polygon
 from hisup.utils.polygon import get_pred_junctions
+from hisup.backbones.build import build_backbone
+
 from skimage.measure import label, regionprops
+
 
 class ImageBuildingDetector(nn.Module):
     def __init__(self, cfg):

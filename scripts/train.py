@@ -1,4 +1,5 @@
 import os
+import shutil
 import time
 import argparse
 import logging
@@ -11,7 +12,6 @@ import json
 from tqdm import tqdm
 
 from hisup.config import cfg
-from hisup.detector_images import BuildingDetector
 from hisup.detector_both import MultiModalBuildingDetector
 from hisup.detector_lidar import LiDARBuildingDetector
 from hisup.detector_images import ImageBuildingDetector
@@ -201,6 +201,9 @@ def train(cfg):
         raise NotImplementedError
 
     model = model.to(device)
+
+    n_params = sum(p.numel() for p in model.parameters() if p.requires_grad) / 10**6
+    logger.info(f"Model has {model.__class__.__name__} has {n_params:.2f}M parameters")
 
     train_dataset = build_train_dataset(cfg)
     val_dataset, gt_file = build_val_dataset(cfg)
