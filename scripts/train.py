@@ -10,6 +10,7 @@ import wandb
 import os.path as osp
 import json
 from tqdm import tqdm
+from collections import defaultdict
 
 from hisup.config import cfg
 from hisup.detector_both import MultiModalBuildingDetector
@@ -46,24 +47,12 @@ def parse_args():
                         metavar="FILE",
                         help="path to config file",
                         type=str,
-                        # default="./config-files/lidarpoly_hrnet48_debug.yaml",
-                        default="./config-files/lidarpoly_hrnet48.yaml",
+                        default="./config-files/lidarpoly_hrnet48_debug.yaml",
+                        # default="./config-files/lidarpoly_hrnet48.yaml",
                         )
 
     parser.add_argument("--log-to-wandb",
                         help="Activate logging to weights and biases",
-                        type=bool,
-                        default=False,
-                        )
-
-    parser.add_argument("--use-lidar",
-                        help="Activate use of lidar pointclouds as input",
-                        type=bool,
-                        default=True,
-                        )
-
-    parser.add_argument("--use-images",
-                        help="Activate use of images as input",
                         type=bool,
                         default=False,
                         )
@@ -85,6 +74,36 @@ def parse_args():
     args = parser.parse_args()
     
     return args
+
+
+def count_model_params(model):
+
+    param_counts = defaultdict(int)
+    for name, module in model.named_children():
+        num_params = sum(p.numel() for p in module.parameters() if p.requires_grad)
+
+        print(name)
+
+        if 'pillar_' in name:
+            param_counts['LiDAR_Backbone']+= num_params
+        elif 'backbone' in name:
+            param_counts['Image_Backbone'] += num_params
+        elif 'fusion' in name:
+            param_counts['LiDAR_Image_Fusion'] += num_params
+        else:
+            param_counts['HiSup']+= num_params
+
+    param_counts['Total'] = sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+    # TODO: print params per module, e.g. how many params for Image,Lidar backbone and how many for Hisup?
+    logger.info(f"Model {model.__class__.__name__} has:")
+    for key,val in param_counts.items():
+        logger.info(f"{val/10**6:.2f}M {key} parameters")
+
+
+
+
+
 
 def set_random_seed(seed, deterministic=False):
     random.seed(seed)
@@ -191,19 +210,20 @@ def train(cfg):
     logger = logging.getLogger("Training")
     device = cfg.MODEL.DEVICE
 
-    if cfg.USE_IMAGES and not cfg.USE_LIDAR:
+    if cfg.MODEL.USE_IMAGES and not cfg.MODEL.USE_LIDAR:
         model = ImageBuildingDetector(cfg)
-    elif cfg.USE_IMAGES and cfg.USE_LIDAR:
+    elif cfg.MODEL.USE_IMAGES and cfg.MODEL.USE_LIDAR:
         model = MultiModalBuildingDetector(cfg)
-    elif not cfg.USE_IMAGES and cfg.USE_LIDAR:
+    elif not cfg.MODEL.USE_IMAGES and cfg.MODEL.USE_LIDAR:
         model = LiDARBuildingDetector(cfg)
     else:
         raise NotImplementedError
 
+    count_model_params(model)
+
     model = model.to(device)
 
-    n_params = sum(p.numel() for p in model.parameters() if p.requires_grad) / 10**6
-    logger.info(f"Model has {model.__class__.__name__} has {n_params:.2f}M parameters")
+
 
     train_dataset = build_train_dataset(cfg)
     val_dataset, gt_file = build_val_dataset(cfg)
@@ -330,8 +350,6 @@ if __name__ == "__main__":
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
     cfg.LOG_TO_WANDB = args.log_to_wandb
-    cfg.USE_LIDAR = args.use_lidar
-    cfg.USE_IMAGES = args.use_images
 
     cfg.OUTPUT_DIR = osp.join(cfg.OUTPUT_DIR, datetime.datetime.now().strftime("%Y-%m-%d_%H:%M"))
 

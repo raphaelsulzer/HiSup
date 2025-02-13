@@ -25,7 +25,7 @@ def build_train_dataset(cfg):
     dargs = DatasetCatalog.get(name)
 
     factory = getattr(train_dataset, dargs['factory'])
-    if cfg.USE_IMAGES:
+    if cfg.MODEL.USE_IMAGES:
        transforms = Compose(
             [ResizeImageAndAnnotation(cfg.DATASETS.IMAGE.HEIGHT,
                                       cfg.DATASETS.IMAGE.WIDTH,
@@ -49,11 +49,11 @@ def build_train_dataset(cfg):
     args = dargs['args']
     args['transform'] = transforms
     args['augment'] = cfg.DATASETS.ROTATE_F
-    args['use_lidar'] = cfg.USE_LIDAR
-    args['use_images'] = cfg.USE_IMAGES
+    args['use_lidar'] = cfg.MODEL.USE_LIDAR
+    args['use_images'] = cfg.MODEL.USE_IMAGES
     dataset = factory(**args)
 
-    collate_fn = partial(default_dataset.collate_fn, use_lidar= cfg.USE_LIDAR, use_images=cfg.USE_IMAGES)
+    collate_fn = partial(default_dataset.collate_fn, use_lidar= cfg.MODEL.USE_LIDAR, use_images=cfg.MODEL.USE_IMAGES)
 
     dataset = torch.utils.data.DataLoader(dataset,
                                           batch_size=cfg.SOLVER.IMS_PER_BATCH,
@@ -66,7 +66,7 @@ def build_train_dataset(cfg):
 
 def build_val_dataset(cfg):
 
-    if cfg.USE_IMAGES:
+    if cfg.MODEL.USE_IMAGES:
         transforms = Compose(
             [ResizeImage(cfg.DATASETS.IMAGE.HEIGHT,
                          cfg.DATASETS.IMAGE.WIDTH),
@@ -88,10 +88,10 @@ def build_val_dataset(cfg):
     args = dargs['args']
     args['transform'] = transforms
     args['augment'] = False
-    args['use_lidar'] = cfg.USE_LIDAR
-    args['use_images'] = cfg.USE_IMAGES
+    args['use_lidar'] = cfg.MODEL.USE_LIDAR
+    args['use_images'] = cfg.MODEL.USE_IMAGES
 
-    collate_fn = partial(default_dataset.collate_fn, use_lidar= cfg.USE_LIDAR, use_images=cfg.USE_IMAGES)
+    collate_fn = partial(default_dataset.collate_fn, use_lidar= cfg.MODEL.USE_LIDAR, use_images=cfg.MODEL.USE_IMAGES)
 
     dataset = factory(**args)
     dataset = torch.utils.data.DataLoader(

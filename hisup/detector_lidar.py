@@ -7,7 +7,7 @@ class LiDARBuildingDetector(BuildingDetector):
     def __init__(self, cfg):
         super().__init__(cfg)
 
-        res = 512
+        res = cfg.DATASETS.IMAGE.HEIGHT
         voxel_size=(cfg.MODEL.POINT_ENCODER.voxel_size,cfg.MODEL.POINT_ENCODER.voxel_size,res)
         point_cloud_range=[0,0,0,res,res,res]
         max_voxels=(cfg.MODEL.POINT_ENCODER.max_voxels,cfg.MODEL.POINT_ENCODER.max_voxels) # (train,test)
@@ -24,7 +24,6 @@ class LiDARBuildingDetector(BuildingDetector):
                                             out_channel=64)
 
         layer_strides = [1 if cfg.MODEL.POINT_ENCODER.voxel_size == 4 else 2, 2, 2]
-
         self.pillar_backbone = Backbone(in_channel=64,
                                  out_channels=[64, 128, 256],
                                  layer_nums=[3, 5, 5],
@@ -34,12 +33,10 @@ class LiDARBuildingDetector(BuildingDetector):
                          upsample_strides=[1, 2, 4],
                          out_channels=[128, 128, 128])
 
-
+        # this is not really the head from PointPillars, I just give it that name because the parameters should be counted as backbone params
         head_size = cfg.MODEL.HEAD_SIZE
         num_class = sum(sum(head_size, []))
-
-
-        self.classification_head = MultitaskHead(input_channels=cfg.MODEL.OUT_FEATURE_CHANNELS,num_class=num_class,head_size=head_size)
+        self.pillar_head = MultitaskHead(input_channels=cfg.MODEL.OUT_FEATURE_CHANNELS,num_class=num_class,head_size=head_size)
 
     def forward(self, images, points, annotations=None):
         if self.training:
@@ -49,8 +46,7 @@ class LiDARBuildingDetector(BuildingDetector):
 
     def forward_test(self, images, points):
 
-        features = self.forward_points(points)
-        outputs = self.classification_head(features)
+        features, outputs = self.forward_points(points)
 
         jloc_feature = self.jloc_head(features)
         afm_feature = self.afm_head(features)
@@ -128,15 +124,16 @@ class LiDARBuildingDetector(BuildingDetector):
 
         pillar_features = self.pillar_neck(pillar_features)
 
-        return pillar_features
+        pillar_outputs = self.pillar_head(pillar_features)
+
+        return pillar_features, pillar_outputs
 
     def forward_train(self, images, points, annotations=None):
         self.train_step += 1
 
         targets, metas = self.encoder(annotations)
 
-        features = self.forward_points(points)
-        outputs = self.classification_head(features)
+        features, outputs = self.forward_points(points)
 
         loss_dict = {
             'loss_jloc': 0.0,

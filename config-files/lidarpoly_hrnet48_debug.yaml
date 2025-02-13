@@ -30,6 +30,8 @@ DATASETS:
   TEST: ("lidarpoly_test",)
 
 MODEL:
+  USE_LIDAR: 1
+  USE_IMAGES: 0
   NAME: "HRNet48v2"
   HEAD_SIZE: [[2]]
   OUT_FEATURE_CHANNELS: 384
@@ -42,6 +44,6 @@ MODEL:
   POINT_ENCODER:
     voxel_size: 4
     max_voxels: 16000
-    max_num_points: 8
+    max_num_points: 12
 
 OUTPUT_DIR: "./outputs/lidarpoly_hrnet48_debug"

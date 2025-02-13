@@ -1,17 +1,17 @@
 from hisup.detector_default import *
 from hisup.utils.polygon import generate_polygon
 from hisup.utils.polygon import get_pred_junctions
-from hisup.backbones.build import build_backbone
+from hisup.backbones.build import build_image_backbone
 
 from skimage.measure import label, regionprops
 
 
-class ImageBuildingDetector(nn.Module):
+class ImageBuildingDetector(BuildingDetector):
     def __init__(self, cfg):
-        super(BuildingDetector, self).__init__()
-        self.backbone = build_backbone(cfg)
+        super().__init__(cfg)
+
+        self.image_backbone = build_image_backbone(cfg)
         self.backbone_name = cfg.MODEL.NAME
-        self.test_inria = 'inria' in cfg.DATASETS.TEST[0]
 
         self.encoder = Encoder(cfg)
 
@@ -45,7 +45,7 @@ class ImageBuildingDetector(nn.Module):
 
     def forward_test(self, images):
 
-        outputs, features = self.backbone(images)
+        outputs, features = self.image_backbone(images)
 
         mask_feature = self.mask_head(features)
         jloc_feature = self.jloc_head(features)
@@ -80,20 +80,19 @@ class ImageBuildingDetector(nn.Module):
             juncs_pred[:,0] *= scale_x
             juncs_pred[:,1] *= scale_y
 
-            if not self.test_inria:
-                polys, scores = [], []
-                props = regionprops(label(mask_pred_per_im > 0.5))
-                for prop in props:
-                    poly, juncs_sa, edges_sa, score, juncs_index = generate_polygon(prop, mask_pred_per_im, \
-                                                                            juncs_pred, 0, self.test_inria)
-                    if juncs_sa.shape[0] == 0:
-                        continue
+            polys, scores = [], []
+            props = regionprops(label(mask_pred_per_im > 0.5))
+            for prop in props:
+                poly, juncs_sa, edges_sa, score, juncs_index = generate_polygon(prop, mask_pred_per_im, \
+                                                                        juncs_pred, 0, False)
+                if juncs_sa.shape[0] == 0:
+                    continue
 
-                    polys.append(poly)
-                    scores.append(score)
-                batch_scores.append(scores)
-                batch_polygons.append(polys)
-            
+                polys.append(poly)
+                scores.append(score)
+            batch_scores.append(scores)
+            batch_polygons.append(polys)
+
             batch_masks.append(mask_pred_per_im)
             batch_juncs.append(juncs_pred)
 
@@ -111,7 +110,7 @@ class ImageBuildingDetector(nn.Module):
         self.train_step += 1
 
         targets, metas = self.encoder(annotations)
-        outputs, features = self.backbone(images)
+        outputs, features = self.image_backbone(images)
 
         loss_dict = {
             'loss_jloc': 0.0,
@@ -144,27 +143,4 @@ class ImageBuildingDetector(nn.Module):
         extra_info = {}
 
         return loss_dict, extra_info
-    
-    def _make_conv(self, dim_in, dim_hid, dim_out):
-        layer = nn.Sequential(
-            nn.Conv2d(dim_in, dim_hid, kernel_size=3, padding=1),
-            nn.BatchNorm2d(dim_hid),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(dim_hid, dim_hid, kernel_size=3, padding=1),
-            nn.BatchNorm2d(dim_hid),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(dim_hid, dim_out, kernel_size=3, padding=1),
-            nn.BatchNorm2d(dim_out),
-            nn.ReLU(inplace=True),
-        )
-        return layer
-
-    def _make_predictor(self, dim_in, dim_out):
-        m = int(dim_in / 4)
-        layer = nn.Sequential(
-                    nn.Conv2d(dim_in, m, kernel_size=3, padding=1),
-                    nn.ReLU(inplace=True),
-                    nn.Conv2d(m, dim_out, kernel_size=1),
-                )
-        return layer
 

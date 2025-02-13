@@ -70,8 +70,11 @@ def build_resunet101(cfg):
     print('INFO:build ResnetUnet101 backbone')
     return model
 
-def build_backbone(cfg):
+def build_image_backbone(cfg):
     assert cfg.MODEL.NAME in MODELS,  \
         "cfg.MODELS.NAME: {} is not registered in registry".format(cfg.MODELS.NAME)
 
     return MODELS[cfg.MODEL.NAME](cfg)
+
+
+

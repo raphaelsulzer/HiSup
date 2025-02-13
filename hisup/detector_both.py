@@ -1,30 +1,19 @@
 from hisup.detector_default import *
-from pointpillars.model import PillarLayer, PillarEncoder
+from hisup.detector_images import ImageBuildingDetector
+from hisup.detector_lidar import LiDARBuildingDetector
+from hisup.backbones.build import build_image_backbone
+
+from pointpillars.model import *
 
 
-class MultiModalBuildingDetector(BuildingDetector):
+class MultiModalBuildingDetector(ImageBuildingDetector, LiDARBuildingDetector):
     def __init__(self, cfg):
         super().__init__(cfg)
 
-        self.backbone = build_backbone(cfg)
-        self.backbone_name = cfg.MODEL.NAME
+        # TODO: fix this and make it possible to load a pretrained self.lidar_backbone model
 
-        voxel_size=[4,4,512]
-        point_cloud_range=[0,0,0,512,512,512]
-        max_voxels=(16000,16000)
-        max_num_points=16
 
-        self.pillar_layer = PillarLayer(voxel_size=voxel_size,
-                                        point_cloud_range=point_cloud_range,
-                                        max_num_points=max_num_points,
-                                        max_voxels=max_voxels)
-
-        self.pillar_encoder = PillarEncoder(voxel_size=voxel_size,
-                                            point_cloud_range=point_cloud_range,
-                                            in_channel=8,
-                                            out_channel=256)
-
-        self.image_lidar_backbone_fusion = self._make_conv(cfg.MODEL.OUT_FEATURE_CHANNELS*2,
+        self.image_lidar_fusion = self._make_conv(cfg.MODEL.OUT_FEATURE_CHANNELS*2,
                                                            cfg.MODEL.OUT_FEATURE_CHANNELS,
                                                            cfg.MODEL.OUT_FEATURE_CHANNELS)
 
@@ -36,7 +25,7 @@ class MultiModalBuildingDetector(BuildingDetector):
 
     def forward_test(self, images, points):
 
-        outputs, features = self.backbone(images)
+        outputs, features = self.image_backbone(images)
 
         # image lidar fusion
         features = torch.cat((features, self.forward_points(points)), axis=1)
@@ -99,58 +88,17 @@ class MultiModalBuildingDetector(BuildingDetector):
         return output, extra_info
 
 
-    def forward_points(self, batched_pts):
-        # batched_pts: list[tensor] -> pillars: (p1 + p2 + ... + pb, num_points, c),
-        #                              coors_batch: (p1 + p2 + ... + pb, 1 + 3),
-        #                              num_points_per_pillar: (p1 + p2 + ... + pb, ), (b: batch size)
-        pillars, coors_batch, npoints_per_pillar = self.pillar_layer(batched_pts)
-
-        # pillars: (p1 + p2 + ... + pb, num_points, c), c = 4
-        # coors_batch: (p1 + p2 + ... + pb, 1 + 3)
-        # npoints_per_pillar: (p1 + p2 + ... + pb, )
-        #                     -> pillar_features: (bs, out_channel, y_l, x_l)
-        pillar_features = self.pillar_encoder(pillars, coors_batch, npoints_per_pillar)
-
-        return pillar_features
-
-    def jloc_vis(self, tensor):
-        import matplotlib.pyplot as plt
-        import matplotlib.colors as mcolors
-
-        # Define color map based on the range of values {0, 1, 2}
-        cmap = mcolors.ListedColormap([(0.5, 0.5, 0.5, 0.5), 'green', 'red'])
-        bounds = [0, 1, 2, 3]  # Define the range of values
-        norm = mcolors.BoundaryNorm(bounds, cmap.N)
-
-        # Plotting the tensor values as an image
-        plt.imshow(tensor.numpy(), cmap=cmap, norm=norm)
-
-        # Add legend manually and place it outside the axis
-        legend_labels = ['outside', 'concave', 'convex']
-        colors = ['grey', 'green', 'red']
-        handles = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=10) for color in
-                   colors]
-        plt.legend(handles, legend_labels, title="Value", loc='upper left', bbox_to_anchor=(1, 1))
-
-        # Title and layout
-        plt.title("jloc Tensor")
-        plt.axis('off')  # Optionally turn off the axis
-        plt.tight_layout()
-
-        # Show the plot
-        plt.show()
-
     def forward_train(self, images, points, annotations=None):
         self.train_step += 1
 
         targets, metas = self.encoder(annotations)
-        outputs, features = self.backbone(images)
+        outputs, features = self.image_backbone(images)
 
         self.jloc_vis(targets['jloc'][0, 0, :, :].cpu())
 
         # image lidar fusion
         features = torch.cat((features, self.forward_points(points)), axis=1)
-        features = self.image_lidar_backbone_fusion(features)
+        features = self.image_lidar_fusion(features)
 
         loss_dict = {
             'loss_jloc': 0.0,

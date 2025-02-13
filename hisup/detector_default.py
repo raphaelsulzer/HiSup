@@ -219,6 +219,34 @@ class BuildingDetector(nn.Module):
         return layer
 
 
+    def jloc_vis(self, tensor):
+        import matplotlib.pyplot as plt
+        import matplotlib.colors as mcolors
+
+        # Define color map based on the range of values {0, 1, 2}
+        cmap = mcolors.ListedColormap([(0.5, 0.5, 0.5, 0.5), 'green', 'red'])
+        bounds = [0, 1, 2, 3]  # Define the range of values
+        norm = mcolors.BoundaryNorm(bounds, cmap.N)
+
+        # Plotting the tensor values as an image
+        plt.imshow(tensor.numpy(), cmap=cmap, norm=norm)
+
+        # Add legend manually and place it outside the axis
+        legend_labels = ['outside', 'concave', 'convex']
+        colors = ['grey', 'green', 'red']
+        handles = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=10) for color in
+                   colors]
+        plt.legend(handles, legend_labels, title="Value", loc='upper left', bbox_to_anchor=(1, 1))
+
+        # Title and layout
+        plt.title("jloc Tensor")
+        plt.axis('off')  # Optionally turn off the axis
+        plt.tight_layout()
+
+        # Show the plot
+        plt.show()
+
+
 def get_pretrained_model(cfg, file, device):
 
     print(f"Loading pretrained model from {file}")

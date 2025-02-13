@@ -1,1 +1,1 @@
-from .build import build_backbone
+from .build import build_image_backbone
