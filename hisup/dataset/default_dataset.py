@@ -232,8 +232,6 @@ class DefaultDataset(Dataset):
 
         img_info = self.coco.loadImgs(ids=[tile_ids])[0]
 
-        file_name = img_info['file_name']
-
         width = img_info['width']
         height = img_info['height']
 
@@ -244,17 +242,21 @@ class DefaultDataset(Dataset):
         # make annotations
         ann = self.make_annotations(ann_coco, height, width)
 
-        if self.use_images:
         # load image
-            image = io.imread(osp.join(self.root, file_name)).astype(float)[:, :, :3]
+        if self.use_images:
+            filename = osp.join(self.root,img_info['image_path'])
+            if not osp.isfile(filename):
+                raise FileNotFoundError
+            image = io.imread(filename).astype(float)[:, :, :3]
         else:
             image = None
 
+        # load lidar
         if self.use_lidar:
-            # load lidar
-            lidar_file_name = file_name.replace('image','lidar').replace('.tif','.copc.laz')
-            lidar_file_name = osp.join(self.lidar_root,lidar_file_name)
-            points = self.load_lidar_points(lidar_file_name,img_info)
+            filename = osp.join(self.root,img_info['lidar_path']).replace("/images/","/lidar/")
+            if not osp.isfile(filename):
+                raise FileNotFoundError
+            points = self.load_lidar_points(filename,img_info)
         else:
             points = None
 
@@ -295,17 +297,20 @@ class DefaultDataset(Dataset):
         # Assign a different color to each polygon
         colors = list(mcolors.TABLEAU_COLORS.values())
 
-        # Plot the image
         fig, ax = plt.subplots()
-        ax.imshow(image/255.0)  # No cmap, assuming it's an RGB image
 
-        # Normalize Z-values for colormap
-        z_min, z_max = point_cloud[:, 2].min(), point_cloud[:, 2].max()
-        norm = plt.Normalize(vmin=z_min, vmax=z_max)
-        cmap = plt.cm.turbo  # 'turbo' colormap
+        # Plot the image
+        if image is not None:
+            ax.imshow(image/255.0)  # No cmap, assuming it's an RGB image
 
-        # Plot point cloud below polygons
-        ax.scatter(point_cloud[:, 0], point_cloud[:, 1], c=cmap(norm(point_cloud[:, 2])), s=0.2, zorder=2)
+        if point_cloud is not None:
+            # Normalize Z-values for colormap
+            z_min, z_max = point_cloud[:, 2].min(), point_cloud[:, 2].max()
+            norm = plt.Normalize(vmin=z_min, vmax=z_max)
+            cmap = plt.cm.turbo  # 'turbo' colormap
+
+            # Plot point cloud below polygons
+            ax.scatter(point_cloud[:, 0], point_cloud[:, 1], c=cmap(norm(point_cloud[:, 2])), s=0.2, zorder=2)
 
         # Plot polygons
         for i, pid in enumerate(unique_polygons):

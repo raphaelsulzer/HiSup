@@ -38,15 +38,16 @@ class LiDARBuildingDetector(BuildingDetector):
         num_class = sum(sum(head_size, []))
         self.pillar_head = MultitaskHead(input_channels=cfg.MODEL.OUT_FEATURE_CHANNELS,num_class=num_class,head_size=head_size)
 
-    def forward(self, images, points, annotations=None):
+    def forward(self, images, points, annotations = None):
         if self.training:
-            return self.forward_train(images, points, annotations=annotations)
+            return self.forward_train(points, annotations=annotations)
         else:
-            return self.forward_test(images, points)
+            return self.forward_test(points)
 
-    def forward_test(self, images, points):
+    def forward_test(self, points):
 
-        features, outputs = self.forward_points(points)
+        features = self.forward_points(points)
+        outputs = self.pillar_head(features)
 
         jloc_feature = self.jloc_head(features)
         afm_feature = self.afm_head(features)
@@ -124,16 +125,16 @@ class LiDARBuildingDetector(BuildingDetector):
 
         pillar_features = self.pillar_neck(pillar_features)
 
-        pillar_outputs = self.pillar_head(pillar_features)
+        return pillar_features
 
-        return pillar_features, pillar_outputs
-
-    def forward_train(self, images, points, annotations=None):
+    def forward_train(self, points, annotations=None):
         self.train_step += 1
 
         targets, metas = self.encoder(annotations)
 
-        features, outputs = self.forward_points(points)
+        features = self.forward_points(points)
+        outputs = self.pillar_head(features)
+
 
         loss_dict = {
             'loss_jloc': 0.0,

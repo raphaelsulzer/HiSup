@@ -496,9 +496,9 @@ class HighResolutionNet(nn.Module):
         x = torch.cat([x[0], x1, x2, x3], 1)
 
         x = self.last_layer(x)
-        out = self.head(x)
+        # out = self.head(x)
 
-        return out, x
+        return x
 
     def init_weights(self, pretrained='',):
         logger.info('=> init weights from normal distribution')

@@ -1,7 +1,6 @@
 from hisup.detector_default import *
 from hisup.detector_images import ImageBuildingDetector
 from hisup.detector_lidar import LiDARBuildingDetector
-from hisup.backbones.build import build_image_backbone
 
 from pointpillars.model import *
 
@@ -10,11 +9,11 @@ class MultiModalBuildingDetector(ImageBuildingDetector, LiDARBuildingDetector):
     def __init__(self, cfg):
         super().__init__(cfg)
 
-        # TODO: fix this and make it possible to load a pretrained self.lidar_backbone model
+        # TODO: make it possible to load a pretrained self.lidar_backbone model
 
 
-        self.image_lidar_fusion = self._make_conv(cfg.MODEL.OUT_FEATURE_CHANNELS*2,
-                                                           cfg.MODEL.OUT_FEATURE_CHANNELS,
+        self.image_lidar_fusion = self._make_conv(384+256,
+                                                           1024,
                                                            cfg.MODEL.OUT_FEATURE_CHANNELS)
 
     def forward(self, images, points, annotations=None):
@@ -25,11 +24,9 @@ class MultiModalBuildingDetector(ImageBuildingDetector, LiDARBuildingDetector):
 
     def forward_test(self, images, points):
 
-        outputs, features = self.image_backbone(images)
-
-        # image lidar fusion
-        features = torch.cat((features, self.forward_points(points)), axis=1)
-        features = self.image_lidar_backbone_fusion(features)
+        features = torch.cat((self.image_backbone(images), self.forward_points(points)), axis=1)
+        features = self.image_lidar_fusion(features)
+        outputs = self.pillar_head(features)
 
         jloc_feature = self.jloc_head(features)
         afm_feature = self.afm_head(features)
@@ -92,13 +89,11 @@ class MultiModalBuildingDetector(ImageBuildingDetector, LiDARBuildingDetector):
         self.train_step += 1
 
         targets, metas = self.encoder(annotations)
-        outputs, features = self.image_backbone(images)
-
-        self.jloc_vis(targets['jloc'][0, 0, :, :].cpu())
 
         # image lidar fusion
-        features = torch.cat((features, self.forward_points(points)), axis=1)
+        features = torch.cat((self.image_backbone(images), self.forward_points(points)), axis=1)
         features = self.image_lidar_fusion(features)
+        outputs = self.pillar_head(features)
 
         loss_dict = {
             'loss_jloc': 0.0,

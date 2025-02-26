@@ -30,11 +30,11 @@ DATASETS:
   TEST: ("lidarpoly_test",)
 
 MODEL:
-  USE_LIDAR: 1
-  USE_IMAGES: 0
+  USE_LIDAR: 0
+  USE_IMAGES: 1
   NAME: "HRNet48v2"
   HEAD_SIZE: [[2]]
-  OUT_FEATURE_CHANNELS: 384
+  OUT_FEATURE_CHANNELS: 256
   LOSS_WEIGHTS:
     loss_joff: 0.25    # joff  regression
     loss_jloc: 8.0     # jloc  classification
@@ -42,8 +42,8 @@ MODEL:
     loss_afm : 0.1
     loss_remask : 1.0
   POINT_ENCODER:
-    voxel_size: 4
-    max_voxels: 16000
-    max_num_points: 12
+    voxel_size: 2
+    max_voxels: 64000
+    max_num_points: 4
 
 OUTPUT_DIR: "./outputs/lidarpoly_hrnet48_debug"

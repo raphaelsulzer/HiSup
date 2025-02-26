@@ -24,6 +24,7 @@ from hisup.utils.miscellaneous import save_config
 from hisup.utils.metric_logger import MetricLogger
 from hisup.utils.checkpoint import DetectronCheckpointer
 from hisup.utils.metrics.cIoU import compute_IoU_cIoU
+from hisup.utils.path_checker import *
 from tools.test_pipelines import generate_coco_ann
 
 import torch
@@ -56,10 +57,6 @@ def parse_args():
                         type=bool,
                         default=False,
                         )
-    
-    parser.add_argument("--clean",
-                        default=False,
-                        action='store_true')
 
     parser.add_argument("--seed",
                         default=2,
@@ -81,8 +78,6 @@ def count_model_params(model):
     param_counts = defaultdict(int)
     for name, module in model.named_children():
         num_params = sum(p.numel() for p in module.parameters() if p.requires_grad)
-
-        print(name)
 
         if 'pillar_' in name:
             param_counts['LiDAR_Backbone']+= num_params
@@ -123,6 +118,8 @@ def setup_wandb(cfg):
     wandb.init(
         # set the wandb project where this run will be logged
         project="HiSup",
+        name=cfg.RUN_NAME,
+        group=cfg.RUN_GROUP,
         # track hyperparameters and run metadata
         config=dict(cfg)
     )
@@ -223,8 +220,6 @@ def train(cfg):
 
     model = model.to(device)
 
-
-
     train_dataset = build_train_dataset(cfg)
     val_dataset, gt_file = build_val_dataset(cfg)
     gt_file = osp.abspath(gt_file)
@@ -299,7 +294,7 @@ def train(cfg):
                          it,len(train_dataset),
                          optimizer.param_groups[0]["lr"])
 
-            # if it % 60 == 0 and it > 0:
+            # if it % 20 == 0 and it > 0:
             #     break
 
         outfile = osp.join(cfg.OUTPUT_DIR,'validation','validation_{:05d}.json'.format(epoch))
@@ -337,7 +332,6 @@ def train(cfg):
     )
 
 
-
 if __name__ == "__main__":
 
     pycocotools_logger = logging.getLogger("pycocotools")
@@ -351,18 +345,20 @@ if __name__ == "__main__":
     cfg.merge_from_list(args.opts)
     cfg.LOG_TO_WANDB = args.log_to_wandb
 
-    cfg.OUTPUT_DIR = osp.join(cfg.OUTPUT_DIR, datetime.datetime.now().strftime("%Y-%m-%d_%H:%M"))
+
+    cfg.RUN_GROUP = "v1_interior_appended_to_exterior"
+    cfg.RUN_NAME = "v1_both"
+    cfg.OUTPUT_DIR = osp.join(cfg.OUTPUT_DIR, cfg.RUN_NAME)
+    # cfg.OUTPUT_DIR = osp.join(cfg.OUTPUT_DIR, datetime.datetime.now().strftime("%Y-%m-%d_%H:%M"))
 
     cfg.freeze()
-    
-    output_dir = cfg.OUTPUT_DIR
-    if output_dir:
-        if os.path.isdir(output_dir) and args.clean:
-            import shutil
-            shutil.rmtree(output_dir)
-        os.makedirs(output_dir, exist_ok=True)
 
-    logger = make_logger('Training', filepath=osp.join(output_dir,'train.log'))
+
+
+    if not "debug" in cfg.OUTPUT_DIR:
+        check_path(cfg.OUTPUT_DIR)
+
+    logger = make_logger('Training', filepath=osp.join(cfg.OUTPUT_DIR,'train.log'))
     logger.info(args)
     logger.info("Loaded configuration file {}".format(args.config_file))
 
@@ -378,5 +374,4 @@ if __name__ == "__main__":
     set_random_seed(args.seed, True)
     train(cfg)
 
-    # TODO: I need to remove tiles that have buildings but no lidar information, otherwise it becomes impossible for the lidar only models to do anything
 

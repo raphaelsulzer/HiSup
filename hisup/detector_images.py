@@ -36,16 +36,12 @@ class ImageBuildingDetector(BuildingDetector):
         self.final_conv = self._make_conv(dim_in*2, dim_in, 2)
 
         self.train_step = 0
-        
-    def forward(self, images, annotations = None):
-        if self.training:
-            return self.forward_train(images, annotations=annotations)
-        else:
-            return self.forward_test(images)
+
 
     def forward_test(self, images):
 
-        outputs, features = self.image_backbone(images)
+        features = self.image_backbone(images)
+        outputs = self.image_backbone.head(features)
 
         mask_feature = self.mask_head(features)
         jloc_feature = self.jloc_head(features)
@@ -105,12 +101,19 @@ class ImageBuildingDetector(BuildingDetector):
         }
         return output, extra_info
 
+    def forward(self, images, points, annotations = None):
+        if self.training:
+            return self.forward_train(images, annotations=annotations)
+        else:
+            return self.forward_test(images)
+
 
     def forward_train(self, images, annotations = None):
         self.train_step += 1
 
         targets, metas = self.encoder(annotations)
-        outputs, features = self.image_backbone(images)
+        features = self.image_backbone(images)
+        outputs = self.image_backbone.head(features)
 
         loss_dict = {
             'loss_jloc': 0.0,

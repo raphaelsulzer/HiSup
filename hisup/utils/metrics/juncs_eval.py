@@ -9,12 +9,10 @@ journal = {arXiv preprint arXiv:1912.01756}
 """
 
 from pycocotools.coco import COCO
-from pycocotools import mask as cocomask
 import numpy as np
 import json
 import argparse
 from tqdm import tqdm
-from rdp import rdp
 
 
 def evaluate_junctions(input_json, gti_annotations):
