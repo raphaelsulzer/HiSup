@@ -13,3 +13,6 @@ backbones/*
 
 **/*.pyc
 **/*.so
+
+data
+outputs
