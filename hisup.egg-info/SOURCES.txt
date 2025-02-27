@@ -2,7 +2,10 @@ LICENSE
 README.md
 setup.py
 hisup/__init__.py
-hisup/detector.py
+hisup/detector_both.py
+hisup/detector_default.py
+hisup/detector_images.py
+hisup/detector_lidar.py
 hisup/encoder.py
 hisup/solver.py
 hisup.egg-info/PKG-INFO

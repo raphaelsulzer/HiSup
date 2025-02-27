@@ -19,8 +19,9 @@ def check_path(path):
             shutil.rmtree(path)
             os.makedirs(path, exist_ok=False)
         else:
-            print(f"\nOK! Set a different path then!")
-            sys.exit(0)
+            print(f"\nOK! Using the existing path!")
+            return
+            
     else:
         print(f"\nPath {path} does not exist. Creating...")
         os.makedirs(path,exist_ok=False)

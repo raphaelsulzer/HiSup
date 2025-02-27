@@ -48,8 +48,8 @@ def parse_args():
                         metavar="FILE",
                         help="path to config file",
                         type=str,
-                        default="./config-files/lidarpoly_hrnet48_debug.yaml",
-                        # default="./config-files/lidarpoly_hrnet48.yaml",
+                        # default="./config-files/lidarpoly_hrnet48_debug.yaml",
+                        default="./config-files/lidarpoly_hrnet48.yaml",
                         )
 
     parser.add_argument("--log-to-wandb",
@@ -57,16 +57,22 @@ def parse_args():
                         type=bool,
                         default=False,
                         )
+    
+    parser.add_argument("--resume-training",
+                    help="Resume training from existing model",
+                    type=bool,
+                    default=False,
+                    )
 
     parser.add_argument("--seed",
                         default=2,
                         type=int)
 
-    parser.add_argument("opts",
-                        help="Modify config options using the command-line",
-                        default=None,
-                        nargs=argparse.REMAINDER
-                        )
+    # parser.add_argument("opts",
+    #                     help="Modify config options using the command-line",
+    #                     default=None,
+    #                     nargs=argparse.REMAINDER
+    #                     )
 
     args = parser.parse_args()
     
@@ -219,7 +225,9 @@ def train(cfg):
     count_model_params(model)
 
     model = model.to(device)
+    
 
+        
     train_dataset = build_train_dataset(cfg)
     val_dataset, gt_file = build_val_dataset(cfg)
     gt_file = osp.abspath(gt_file)
@@ -240,7 +248,17 @@ def train(cfg):
                                         save_dir=cfg.OUTPUT_DIR,
                                         save_to_disk=True,
                                         logger=logger)
+    
+    if cfg.resume_training:
+        latest_checkpoint = os.path.join(cfg.OUTPUT_DIR,"last_checkpoint")
+        if not os.path.isfile(latest_checkpoint):
+            raise FileExistsError(f"Could not load existing weights from {latest_checkpoint}. File does not exist!")
+        with open(latest_checkpoint, "r") as file:
+            latest_checkpoint = file.readline().strip()
 
+        checkpointer.load(latest_checkpoint)
+        arguments['epoch'] = int(os.path.split(latest_checkpoint)[1].split('_')[-1].split('.')[0])
+        
     start_training_time = time.time()
     end = time.time()
 
@@ -249,7 +267,7 @@ def train(cfg):
 
     global_iteration = epoch_size*start_epoch
 
-    if cfg.LOG_TO_WANDB:
+    if cfg.log_to_wandb:
         setup_wandb(cfg)
 
     best_iou = 0.0
@@ -301,7 +319,7 @@ def train(cfg):
         os.makedirs(osp.dirname(outfile),exist_ok=True)
         iou, ciou = validation(model, val_dataset, device, outfile=outfile, gtfile=gt_file)
 
-        if cfg.LOG_TO_WANDB:
+        if cfg.log_to_wandb:
             # make wandb dict
             wandb_dict = {}
             for key in meters.meters.keys():
@@ -310,9 +328,10 @@ def train(cfg):
             wandb_dict['val_iou'] = iou
             wandb_dict['val_ciou'] = ciou
             wandb_dict['epoch'] = epoch
+            wandb_dict['learning_rate'] = optimizer.param_groups[0]["lr"]
             wandb.log(wandb_dict)
 
-        checkpointer.save('model_{:05d}'.format(epoch))
+        checkpointer.save('model_{:05d}'.format(epoch),epoch=epoch)
         if iou > best_iou:
             logger.info(f"New best IoU of {iou}")
             best_iou = iou
@@ -331,6 +350,13 @@ def train(cfg):
         )
     )
 
+def add_args_to_cfg(cfg,args):
+    for k, v in vars(args).items():
+        if v is not None:
+            if k in cfg:  # If the key exists, merge
+                cfg[k] = v
+            else:  # If the key doesn't exist, add it
+                cfg[k] = v
 
 if __name__ == "__main__":
 
@@ -342,18 +368,15 @@ if __name__ == "__main__":
     args = parse_args()
 
     cfg.merge_from_file(args.config_file)
-    cfg.merge_from_list(args.opts)
-    cfg.LOG_TO_WANDB = args.log_to_wandb
+    add_args_to_cfg(cfg,args)
 
 
     cfg.RUN_GROUP = "v1_interior_appended_to_exterior"
-    cfg.RUN_NAME = "v1_both"
+    cfg.RUN_NAME = "v1_lidar_only"
     cfg.OUTPUT_DIR = osp.join(cfg.OUTPUT_DIR, cfg.RUN_NAME)
     # cfg.OUTPUT_DIR = osp.join(cfg.OUTPUT_DIR, datetime.datetime.now().strftime("%Y-%m-%d_%H:%M"))
 
     cfg.freeze()
-
-
 
     if not "debug" in cfg.OUTPUT_DIR:
         check_path(cfg.OUTPUT_DIR)

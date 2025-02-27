@@ -1,6 +1,8 @@
 .history/
 __pycache__/
 
+*.egg-info/
+
 build/*
 outputs/*
 .vscode/*
@@ -18,3 +20,5 @@ data
 outputs
 
 .idea
+
+wandb/

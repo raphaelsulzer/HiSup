@@ -246,7 +246,7 @@ class DefaultDataset(Dataset):
         if self.use_images:
             filename = osp.join(self.root,img_info['image_path'])
             if not osp.isfile(filename):
-                raise FileNotFoundError
+                raise FileNotFoundError(filename)
             image = io.imread(filename).astype(float)[:, :, :3]
         else:
             image = None
@@ -255,7 +255,7 @@ class DefaultDataset(Dataset):
         if self.use_lidar:
             filename = osp.join(self.root,img_info['lidar_path']).replace("/images/","/lidar/")
             if not osp.isfile(filename):
-                raise FileNotFoundError
+                raise FileNotFoundError(filename)
             points = self.load_lidar_points(filename,img_info)
         else:
             points = None

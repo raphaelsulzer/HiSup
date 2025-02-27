@@ -1,6 +1,8 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.2
 Name: hisup
 Version: 0.1.0
 Summary: pyhisup
 Author: --
 License-File: LICENSE
+Dynamic: author
+Dynamic: summary

@@ -1,5 +1,5 @@
 SOLVER:
-  IMS_PER_BATCH: 8
+  IMS_PER_BATCH: 16
   BASE_LR: 1e-4
   MAX_EPOCH: 100
   STEPS: (25,)
@@ -9,7 +9,7 @@ SOLVER:
   AMSGRAD: True
 
 DATALOADER:
-  NUM_WORKERS: 8
+  NUM_WORKERS: 16
 
 DATASETS:
   IMAGE:
@@ -30,10 +30,10 @@ DATASETS:
 
 MODEL:
   USE_LIDAR: 1
-  USE_IMAGES: 1
+  USE_IMAGES: 0
   NAME: "HRNet48v2"
   HEAD_SIZE: [[2]]
-  OUT_FEATURE_CHANNELS: 256
+  OUT_FEATURE_CHANNELS: 384
   LOSS_WEIGHTS:
     loss_joff: 0.25    # joff  regression
     loss_jloc: 8.0     # jloc  classification
