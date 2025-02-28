@@ -245,6 +245,7 @@ def train(cfg):
     checkpointer = DetectronCheckpointer(cfg,
                                         model,
                                         optimizer,
+                                        scheduler=scheduler,
                                         save_dir=cfg.OUTPUT_DIR,
                                         save_to_disk=True,
                                         logger=logger)
@@ -372,7 +373,7 @@ if __name__ == "__main__":
 
 
     cfg.RUN_GROUP = "v1_interior_appended_to_exterior"
-    cfg.RUN_NAME = "v1_lidar_only"
+    cfg.RUN_NAME = "v1_both"
     cfg.OUTPUT_DIR = osp.join(cfg.OUTPUT_DIR, cfg.RUN_NAME)
     # cfg.OUTPUT_DIR = osp.join(cfg.OUTPUT_DIR, datetime.datetime.now().strftime("%Y-%m-%d_%H:%M"))
 

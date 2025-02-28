@@ -30,6 +30,7 @@ DATASETS:
   TEST: ("lidarpoly_test",)
 
 MODEL:
+  IMAGE_BACKBONE_WEIGHTS: "./backbones/hrnetv2_w48_imagenet_pretrained.pth"
   USE_LIDAR: 0
   USE_IMAGES: 1
   NAME: "HRNet48v2"

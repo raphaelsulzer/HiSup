@@ -14,7 +14,7 @@ def build_hrnet48(cfg):
     model = HRNet48v2(cfg,
                       head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
                       num_class = num_class)
-    pretrained = 'backbones/hrnet_imagenet/hrnetv2_w48_imagenet_pretrained.pth'
+    pretrained = cfg.MODEL.IMAGE_BACKBONE_WEIGHTS
     pretrained = os.path.abspath(pretrained)
     if not os.path.isfile(pretrained):
         raise FileNotFoundError(pretrained)
