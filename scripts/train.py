@@ -30,6 +30,11 @@ from tools.test_pipelines import generate_coco_ann
 import torch
 torch.multiprocessing.set_sharing_strategy('file_system')
 
+pycocotools_logger = logging.getLogger("pycocotools")
+pycocotools_logger.propagate = False  # Prevents log messages from propagating
+pycocotools_logger.handlers.clear()  # Removes existing handlers
+pycocotools_logger.setLevel(logging.CRITICAL)  # Suppresses all logs
+    
 
 class LossReducer(object):
     def __init__(self, cfg):
@@ -48,21 +53,11 @@ def parse_args():
                         metavar="FILE",
                         help="path to config file",
                         type=str,
-                        # default="./config-files/lidarpoly_hrnet48_debug.yaml",
                         default="./config-files/lidarpoly_hrnet48.yaml",
                         )
-
-    parser.add_argument("--log-to-wandb",
-                        help="Activate logging to weights and biases",
-                        type=bool,
-                        default=False,
-                        )
     
-    parser.add_argument("--resume-training",
-                    help="Resume training from existing model",
-                    type=bool,
-                    default=False,
-                    )
+    parser.add_argument('--log-to-wandb', action="store_true", help="Enable Weights and Biases logging")
+    parser.add_argument('--resume-training', action="store_true", help="Resume training from last_checkpoint")
 
     parser.add_argument("--seed",
                         default=2,
@@ -132,9 +127,12 @@ def setup_wandb(cfg):
 
 def log_loss(meters,epoch_size,max_epoch,epoch,it,maxiter,learning_rate):
 
-    eta_batch = epoch_size * (max_epoch - epoch + 1) - it + 1
-    eta_seconds = meters.time.global_avg * eta_batch
-    eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
+    if 'time' in meters.meters.keys():
+        eta_batch = epoch_size * (max_epoch - epoch + 1) - it + 1
+        eta_seconds = meters.time.global_avg * eta_batch
+        eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
+    else:
+        eta_string = ""
 
     logger.info(
         meters.delimiter.join(
@@ -161,12 +159,17 @@ def log_loss(meters,epoch_size,max_epoch,epoch,it,maxiter,learning_rate):
 
 
 
-def validation(model,val_dataset,device,outfile,gtfile):
-
+def validation(cfg, model, val_dataset, outfile):
+    
+    meters = MetricLogger(" val_")
+    loss_reducer = LossReducer(cfg)
+    
+    device = cfg.MODEL.DEVICE
+    
     model.eval()
     results = []
     iou = 0.0; ciou = 0.0
-    for it, (images, points, annotations) in enumerate(tqdm(val_dataset, desc="Validation")):
+    for (images, points, annotations) in tqdm(val_dataset, desc="Validation"):
         with torch.no_grad():
 
             if points is not None:
@@ -177,9 +180,14 @@ def validation(model,val_dataset,device,outfile,gtfile):
                 batch_size = images.size(0)
 
             annotations = to_single_device(annotations, device)
-            output, _ = model(images, points)
-            output = to_single_device(output, 'cpu')
+            output, loss_dict = model(images, points, annotations)
 
+            total_loss = loss_reducer(loss_dict)
+            loss_dict_reduced = {k:v.item() for k,v in loss_dict.items()}
+            loss_reduced = total_loss.item()
+            meters.update(loss=loss_reduced, **loss_dict_reduced)
+            
+            output = to_single_device(output, 'cpu')
             batch_scores = output['scores']
             batch_polygons = output['polys_pred']
 
@@ -196,15 +204,13 @@ def validation(model,val_dataset,device,outfile,gtfile):
         logger.info(f'Writing validation results to {outfile}')
         with open(outfile, 'w') as _out:
             json.dump(results, _out)
-
-        iou, ciou = compute_IoU_cIoU(outfile,gtfile)
+        iou, ciou = compute_IoU_cIoU(outfile,val_dataset.dataset.ann_file)
     else:
         logger.info(f"No polygons predicted")
 
-
     model.train()
 
-    return iou, ciou
+    return iou, ciou, meters
 
 
 
@@ -226,14 +232,12 @@ def train(cfg):
 
     model = model.to(device)
     
-
-        
     train_dataset = build_train_dataset(cfg)
-    val_dataset, gt_file = build_val_dataset(cfg)
-    gt_file = osp.abspath(gt_file)
+    val_dataset = build_val_dataset(cfg)
     
     optimizer = make_optimizer(cfg,model)
-    scheduler = make_lr_scheduler(cfg,optimizer)
+    # scheduler = make_lr_scheduler(cfg,optimizer)    
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
     
     loss_reducer = LossReducer(cfg)
     
@@ -278,6 +282,7 @@ def train(cfg):
         model.train()
 
         arguments['epoch'] = epoch
+        epoch_time = time.time()
 
         for it, (images, points, annotations) in enumerate(train_dataset):
             data_time = time.time() - end
@@ -290,7 +295,7 @@ def train(cfg):
 
             annotations = to_single_device(annotations,device)
             
-            loss_dict, _ = model(images,points,annotations)
+            loss_dict = model(images,points,annotations)
             total_loss = loss_reducer(loss_dict)
 
             with torch.no_grad():
@@ -311,25 +316,33 @@ def train(cfg):
                 log_loss(meters,
                          epoch_size,max_epoch,epoch,
                          it,len(train_dataset),
-                         optimizer.param_groups[0]["lr"])
+                         scheduler.get_last_lr()[0])
 
             # if it % 20 == 0 and it > 0:
             #     break
 
         outfile = osp.join(cfg.OUTPUT_DIR,'validation','validation_{:05d}.json'.format(epoch))
         os.makedirs(osp.dirname(outfile),exist_ok=True)
-        iou, ciou = validation(model, val_dataset, device, outfile=outfile, gtfile=gt_file)
+        iou, ciou, val_meters = validation(cfg, model, val_dataset, outfile=outfile)
+        val_meters.update(epoch_time=time.time()-epoch_time)
+        log_loss(val_meters,epoch_size,max_epoch,epoch,
+                    it,len(val_dataset),
+                    scheduler.get_last_lr()[0])
 
+        
         if cfg.log_to_wandb:
             # make wandb dict
             wandb_dict = {}
             for key in meters.meters.keys():
                 if 'loss' in key:
                     wandb_dict[key] = meters.meters[key].global_avg
+            for key in val_meters.meters.keys():
+                if 'loss' in key:
+                    wandb_dict[f"val_{key}"] = val_meters.meters[key].global_avg
             wandb_dict['val_iou'] = iou
             wandb_dict['val_ciou'] = ciou
             wandb_dict['epoch'] = epoch
-            wandb_dict['learning_rate'] = optimizer.param_groups[0]["lr"]
+            wandb_dict['learning_rate'] = scheduler.get_last_lr()[0]
             wandb.log(wandb_dict)
 
         checkpointer.save('model_{:05d}'.format(epoch),epoch=epoch)
@@ -339,7 +352,7 @@ def train(cfg):
             checkpointer.save('model_best')
             shutil.copyfile(outfile,osp.join(cfg.OUTPUT_DIR,'validation','validation_best.json'))
 
-        scheduler.step()
+        scheduler.step(val_meters.meters['loss'].global_avg)
 
     wandb.finish()
 
@@ -361,21 +374,15 @@ def add_args_to_cfg(cfg,args):
 
 if __name__ == "__main__":
 
-    pycocotools_logger = logging.getLogger("pycocotools")
-    pycocotools_logger.propagate = False  # Prevents log messages from propagating
-    pycocotools_logger.handlers.clear()  # Removes existing handlers
-    pycocotools_logger.setLevel(logging.CRITICAL)  # Suppresses all logs
-
     args = parse_args()
+    print(args)
 
     cfg.merge_from_file(args.config_file)
     add_args_to_cfg(cfg,args)
 
-
     cfg.RUN_GROUP = "v1_interior_appended_to_exterior"
-    cfg.RUN_NAME = "v1_both"
-    cfg.OUTPUT_DIR = osp.join(cfg.OUTPUT_DIR, cfg.RUN_NAME)
-    # cfg.OUTPUT_DIR = osp.join(cfg.OUTPUT_DIR, datetime.datetime.now().strftime("%Y-%m-%d_%H:%M"))
+    cfg.RUN_NAME = "v1_lidar_LROnP"
+    cfg.OUTPUT_DIR = os.path.abspath(osp.join(cfg.OUTPUT_DIR, cfg.RUN_NAME))
 
     cfg.freeze()
 

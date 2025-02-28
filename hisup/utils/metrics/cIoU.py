@@ -98,10 +98,6 @@ def compute_IoU_cIoU(input_json, gti_annotations):
     iou = np.mean(list_iou)
     ciou = np.mean(list_ciou)
 
-    print("Done!")
-    print("Mean IoU: ", iou)
-    print("Mean C-IoU: ", ciou)
-
     return iou, ciou
 
 

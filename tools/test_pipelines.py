@@ -15,7 +15,6 @@ from tools.evaluation import coco_eval, boundary_eval, polis_eval
 from hisup.utils.metrics.cIoU import compute_IoU_cIoU
 from hisup.utils.comm import to_single_device
 from hisup.utils.polygon import generate_polygon
-from hisup.utils.visualizer import viz_inria
 from hisup.dataset import build_val_dataset, build_test_dataset
 from hisup.dataset.build import build_transform
 from hisup.utils.polygon import juncs_in_bbox

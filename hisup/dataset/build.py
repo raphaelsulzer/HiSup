@@ -27,10 +27,8 @@ def build_train_dataset(cfg):
     factory = getattr(train_dataset, dargs['factory'])
     if cfg.MODEL.USE_IMAGES:
        transforms = Compose(
-            [ResizeImageAndAnnotation(cfg.DATASETS.IMAGE.HEIGHT,
-                                      cfg.DATASETS.IMAGE.WIDTH,
-                                      cfg.DATASETS.TARGET.HEIGHT,
-                                      cfg.DATASETS.TARGET.WIDTH),
+            [ResizeAnnotation(cfg.DATASETS.TARGET.HEIGHT,
+                            cfg.DATASETS.TARGET.WIDTH),
              ToTensor(),
              Normalize(cfg.DATASETS.IMAGE.PIXEL_MEAN,
                        cfg.DATASETS.IMAGE.PIXEL_STD,
@@ -38,10 +36,8 @@ def build_train_dataset(cfg):
              ])
     else:
        transforms = Compose(
-           [ResizeImageAndAnnotation(cfg.DATASETS.IMAGE.HEIGHT,
-                                     cfg.DATASETS.IMAGE.WIDTH,
-                                     cfg.DATASETS.TARGET.HEIGHT,
-                                     cfg.DATASETS.TARGET.WIDTH),
+           [ResizeAnnotation(cfg.DATASETS.TARGET.HEIGHT,
+                            cfg.DATASETS.TARGET.WIDTH),
             ToTensor()]
        )
 
@@ -68,8 +64,8 @@ def build_val_dataset(cfg):
 
     if cfg.MODEL.USE_IMAGES:
         transforms = Compose(
-            [ResizeImage(cfg.DATASETS.IMAGE.HEIGHT,
-                         cfg.DATASETS.IMAGE.WIDTH),
+            [ResizeAnnotation(cfg.DATASETS.TARGET.HEIGHT,
+                            cfg.DATASETS.TARGET.WIDTH),
              ToTensor(),
              Normalize(cfg.DATASETS.IMAGE.PIXEL_MEAN,
                        cfg.DATASETS.IMAGE.PIXEL_STD,
@@ -78,7 +74,9 @@ def build_val_dataset(cfg):
         )
     else:
         transforms = Compose(
-            [ToTensor()]
+            [ResizeAnnotation(cfg.DATASETS.TARGET.HEIGHT,
+                            cfg.DATASETS.TARGET.WIDTH),
+                ToTensor()]
         )
 
     name = cfg.DATASETS.VAL[0]
@@ -100,35 +98,48 @@ def build_val_dataset(cfg):
         collate_fn=collate_fn,
         num_workers=cfg.DATALOADER.NUM_WORKERS,
     )
-    return dataset, dargs['args']['ann_file']
-
+    return dataset
 
 
 
 
 
 def build_test_dataset(cfg):
-    transforms = Compose(
-        [ResizeImage(cfg.DATASETS.IMAGE.HEIGHT,
-                     cfg.DATASETS.IMAGE.WIDTH),
-         ResamplePointCloud(cfg.DATASETS.PCD.N_POINTS),
-         ToTensor(),
-         Normalize(cfg.DATASETS.IMAGE.PIXEL_MEAN,
-                   cfg.DATASETS.IMAGE.PIXEL_STD,
-                   cfg.DATASETS.IMAGE.TO_255)
-         ]
-    )
 
-    name = cfg.DATASETS.TEST[0]
+    if cfg.MODEL.USE_IMAGES:
+        transforms = Compose(
+            [ResizeAnnotation(cfg.DATASETS.TARGET.HEIGHT,
+                            cfg.DATASETS.TARGET.WIDTH),
+             ToTensor(),
+             Normalize(cfg.DATASETS.IMAGE.PIXEL_MEAN,
+                       cfg.DATASETS.IMAGE.PIXEL_STD,
+                       cfg.DATASETS.IMAGE.TO_255)
+             ]
+        )
+    else:
+        transforms = Compose(
+            [ResizeAnnotation(cfg.DATASETS.TARGET.HEIGHT,
+                            cfg.DATASETS.TARGET.WIDTH),
+                ToTensor()]
+        )
+
+    name = cfg.DATASETS.VAL[0]
     dargs = DatasetCatalog.get(name)
-    factory = getattr(test_dataset, dargs['factory'])
+    factory = getattr(val_dataset, dargs['factory'])
+
     args = dargs['args']
     args['transform'] = transforms
+    args['augment'] = False
+    args['use_lidar'] = cfg.MODEL.USE_LIDAR
+    args['use_images'] = cfg.MODEL.USE_IMAGES
+
+    collate_fn = partial(default_dataset.collate_fn, use_lidar= cfg.MODEL.USE_LIDAR, use_images=cfg.MODEL.USE_IMAGES)
+
     dataset = factory(**args)
     dataset = torch.utils.data.DataLoader(
-        dataset, 
+        dataset,
         batch_size=cfg.SOLVER.IMS_PER_BATCH,
-        collate_fn=dataset.collate_fn,
+        collate_fn=collate_fn,
         num_workers=cfg.DATALOADER.NUM_WORKERS,
     )
-    return dataset, dargs['args']['ann_file']
+    return dataset

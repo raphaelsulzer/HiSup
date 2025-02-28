@@ -111,6 +111,16 @@ class BuildingDetector(nn.Module):
                     nn.Conv2d(m, dim_out, kernel_size=1),
                 )
         return layer
+    
+    def init_loss_dict(self):
+        loss_dict = {
+            'loss_jloc': 0.0,
+            'loss_joff': 0.0,
+            'loss_mask': 0.0,
+            'loss_afm' : 0.0,
+            'loss_remask': 0.0
+        }
+        return loss_dict
 
 
     def jloc_vis(self, tensor):

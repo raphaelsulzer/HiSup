@@ -34,12 +34,17 @@ class ImageBuildingDetector(BuildingDetector):
 
         self.refuse_conv = self._make_conv(2, dim_in//2, dim_in)
         self.final_conv = self._make_conv(dim_in*2, dim_in, 2)
+    
+    def forward(self, images, points, annotations = None):
+        if self.training:
+            return self.forward_train(images, annotations=annotations)
+        else:
+            # return self.forward_test(images, annotations=annotations)
+            return self.forward_val(images, annotations=annotations)
 
-        self.train_step = 0
 
-
-    def forward_test(self, images):
-
+    def forward_common(self,images,annotations=None):
+        targets, _ = self.encoder(annotations)
         features = self.image_backbone(images)
         outputs = self.image_backbone.head(features)
 
@@ -50,14 +55,31 @@ class ImageBuildingDetector(BuildingDetector):
         mask_att_feature = self.a2m_att(afm_feature, mask_feature)
         jloc_att_feature = self.a2j_att(afm_feature, jloc_feature)
 
+        mask_pred = self.mask_predictor(mask_feature + mask_att_feature)
         jloc_pred = self.jloc_predictor(jloc_feature + jloc_att_feature)
         afm_pred = self.afm_predictor(afm_feature)
 
         afm_conv = self.refuse_conv(afm_pred)
         remask_pred = self.final_conv(torch.cat((features, afm_conv), dim=1))
+        
+        return targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred
 
+    
+    def forward_val(self, images, annotations):
+        
+        targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(images,annotations)
+
+        ### loss:
+        loss_dict = self.init_loss_dict()
+        if targets is not None:
+            loss_dict['loss_jloc'] += F.cross_entropy(jloc_pred, targets['jloc'].squeeze(dim=1))
+            loss_dict['loss_joff'] += sigmoid_l1_loss(outputs[:, :], targets['joff'], -0.5, targets['jloc'])
+            loss_dict['loss_mask'] += F.cross_entropy(mask_pred, targets['mask'].squeeze(dim=1).long())
+            loss_dict['loss_afm'] += F.l1_loss(afm_pred, targets['afmap'])
+            loss_dict['loss_remask'] += F.cross_entropy(remask_pred, targets['mask'].squeeze(dim=1).long())
+        
+        ### polygonization:    
         joff_pred = outputs[:, :].sigmoid() - 0.5
-
         jloc_convex_pred = jloc_pred.softmax(1)[:, 2:3]
         jloc_concave_pred = jloc_pred.softmax(1)[:, 1:2]
         remask_pred = remask_pred.softmax(1)[:, 1:]
@@ -92,58 +114,27 @@ class ImageBuildingDetector(BuildingDetector):
             batch_masks.append(mask_pred_per_im)
             batch_juncs.append(juncs_pred)
 
-        extra_info = {}
         output = {
             'polys_pred': batch_polygons,
             'mask_pred': batch_masks,
             'scores': batch_scores,
             'juncs_pred': batch_juncs
         }
-        return output, extra_info
-
-    def forward(self, images, points, annotations = None):
-        if self.training:
-            return self.forward_train(images, annotations=annotations)
-        else:
-            return self.forward_test(images)
+        
+        return output, loss_dict
 
 
     def forward_train(self, images, annotations = None):
-        self.train_step += 1
 
-        targets, metas = self.encoder(annotations)
-        features = self.image_backbone(images)
-        outputs = self.image_backbone.head(features)
-
-        loss_dict = {
-            'loss_jloc': 0.0,
-            'loss_joff': 0.0,
-            'loss_mask': 0.0,
-            'loss_afm' : 0.0,
-            'loss_remask': 0.0
-        }
-
-        mask_feature = self.mask_head(features)
-        jloc_feature = self.jloc_head(features)
-        afm_feature = self.afm_head(features)
-
-        mask_att_feature = self.a2m_att(afm_feature, mask_feature)
-        jloc_att_feature = self.a2j_att(afm_feature, jloc_feature)
-
-        mask_pred = self.mask_predictor(mask_feature + mask_att_feature)
-        jloc_pred = self.jloc_predictor(jloc_feature + jloc_att_feature)
-        afm_pred = self.afm_predictor(afm_feature)
-
-        afm_conv = self.refuse_conv(afm_pred)
-        remask_pred = self.final_conv(torch.cat((features, afm_conv), dim=1))
-
+        targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(images,annotations)
+        
+        loss_dict = self.init_loss_dict()
         if targets is not None:
             loss_dict['loss_jloc'] += F.cross_entropy(jloc_pred, targets['jloc'].squeeze(dim=1))
             loss_dict['loss_joff'] += sigmoid_l1_loss(outputs[:, :], targets['joff'], -0.5, targets['jloc'])
             loss_dict['loss_mask'] += F.cross_entropy(mask_pred, targets['mask'].squeeze(dim=1).long())
             loss_dict['loss_afm'] += F.l1_loss(afm_pred, targets['afmap'])
             loss_dict['loss_remask'] += F.cross_entropy(remask_pred, targets['mask'].squeeze(dim=1).long())
-        extra_info = {}
 
-        return loss_dict, extra_info
+        return loss_dict
 

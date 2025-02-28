@@ -12,10 +12,11 @@ DATALOADER:
   NUM_WORKERS: 16
 
 DATASETS:
+  ROTATE_F: True
   IMAGE:
     PIXEL_MEAN: [108.9177, 114.1638, 100.8611]
     PIXEL_STD: [49.3129, 45.7661, 48.6514]
-    TO_255: True
+    TO_255: False
     HEIGHT: 512
     WIDTH: 512
   TARGET:
@@ -32,9 +33,9 @@ MODEL:
   NAME: "HRNet48v2"
   IMAGE_BACKBONE_WEIGHTS: "./backbones/hrnetv2_w48_imagenet_pretrained.pth"
   USE_LIDAR: 1
-  USE_IMAGES: 1
+  USE_IMAGES: 0
   HEAD_SIZE: [[2]]
-  OUT_FEATURE_CHANNELS: 256
+  OUT_FEATURE_CHANNELS: 384
   LOSS_WEIGHTS:
     loss_joff: 0.25    # joff  regression
     loss_jloc: 8.0     # jloc  classification
