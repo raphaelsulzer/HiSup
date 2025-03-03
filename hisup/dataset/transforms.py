@@ -110,13 +110,15 @@ class ToTensor:
     def __call__(self, image, points, anns=None):
 
         if points is not None:
+            # points = torch.tensor(points, dtype=torch.float32)
             points = F.to_tensor(points).to(torch.float32)
-
+            
         if image is not None:
-            image = F.to_tensor(image).to(torch.float32)
+            # image = torch.tensor(image.copy(), dtype=torch.float32)
+            image = F.to_tensor(image.copy()).to(torch.float32)
 
         if anns is None:
-            return F.to_tensor(image).to(torch.float32), points
+            return image, points
 
         for key, val in anns.items():
             if isinstance(val, np.ndarray):

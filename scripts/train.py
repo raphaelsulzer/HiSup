@@ -318,8 +318,8 @@ def train(cfg):
                          it,len(train_dataset),
                          scheduler.get_last_lr()[0])
 
-            if it % 40 == 0 and it > 0:
-                break
+            # if it % 40 == 0 and it > 0:
+            #     break
 
         outfile = osp.join(cfg.OUTPUT_DIR,'validation','validation_{:05d}.json'.format(epoch))
         os.makedirs(osp.dirname(outfile),exist_ok=True)
