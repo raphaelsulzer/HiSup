@@ -2,6 +2,8 @@ from yacs.config import CfgNode as CN
 
 MODELS = CN()
 
+MODELS.IMAGE_BACKBONE_WEIGHTS = ""
+
 MODELS.NAME = "HRNet48v2"
 MODELS.DEVICE = "cuda"
 MODELS.HEAD_SIZE  = [[2]]

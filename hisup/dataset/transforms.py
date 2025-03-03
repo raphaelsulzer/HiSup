@@ -50,6 +50,25 @@ class ResamplePointCloud:
 
 
 
+class ResizeAnnotation:
+    def __init__(self, ann_height, ann_width):
+        self.ann_height = ann_height
+        self.ann_width = ann_width
+
+    def __call__(self, image, points, ann):
+
+        sx = self.ann_width / ann['width']
+        sy = self.ann_height / ann['height']
+        ann['junc_ori'] = ann['junctions'].copy()
+        ann['junctions'][:, 0] = np.clip(ann['junctions'][:, 0] * sx, 0, self.ann_width - 1e-4)
+        ann['junctions'][:, 1] = np.clip(ann['junctions'][:, 1] * sy, 0, self.ann_height - 1e-4)
+        ann['width'] = self.ann_width
+        ann['height'] = self.ann_height
+        ann['mask_ori'] = ann['mask'].copy()
+        ann['mask'] = cv2.resize(ann['mask'].astype(np.uint8), (int(self.ann_width), int(self.ann_height)))
+
+        return image, points, ann
+
 class ResizeImageAndAnnotation:
     def __init__(self, image_height, image_width, ann_height, ann_width):
         self.image_height = image_height
@@ -73,7 +92,6 @@ class ResizeImageAndAnnotation:
         ann['mask'] = cv2.resize(ann['mask'].astype(np.uint8), (int(self.ann_width), int(self.ann_height)))
 
         return image, points, ann
-
 
 class ResizeImage:
     def __init__(self, image_height, image_width):

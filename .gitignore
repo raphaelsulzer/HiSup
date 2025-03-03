@@ -1,6 +1,8 @@
 .history/
 __pycache__/
 
+*.egg-info/
+
 build/*
 outputs/*
 .vscode/*
@@ -13,3 +15,10 @@ backbones/*
 
 **/*.pyc
 **/*.so
+
+data
+outputs
+
+.idea
+
+wandb/

@@ -4,7 +4,7 @@ class DatasetCatalog:
 
     # DATA_DIR = osp.abspath(osp.join(osp.dirname(__file__),
     #             '..','..','data'))
-    DATA_DIR = "./data"
+    DATA_DIR = "./data/lidarpoly"
     
     DATASETS = {
         'crowdai_train_small': {
@@ -32,16 +32,16 @@ class DatasetCatalog:
             'ann_file': 'coco-Aerial/val/annotation.json',
         },
         'lidarpoly_train': {
-            'img_dir': 'lidarpoly/images/train',
-            'ann_file': 'lidarpoly/annotations_train.json',
+            'img_dir': '',
+            'ann_file': 'annotations_train.json',
         },
         'lidarpoly_val': {
-            'img_dir': 'lidarpoly/images/val',
-            'ann_file': 'lidarpoly/annotations_val.json',
+            'img_dir': '',
+            'ann_file': 'annotations_val.json',
         },
         'lidarpoly_test': {
-            'img_dir': 'lidarpoly/images/train',
-            'ann_file': 'lidarpoly/annotations_test.json',
+            'img_dir': '',
+            'ann_file': 'annotations_test.json',
         }
     }
 

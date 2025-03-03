@@ -1,4 +1,4 @@
-import logging, colorlog, sys
+import logging, colorlog, sys, os
 
 def make_logger(name="MyLogger",level=logging.INFO,
                 filepath=None):
@@ -53,7 +53,9 @@ def make_logger(name="MyLogger",level=logging.INFO,
 
     formatter = logging.Formatter("[%(asctime)s] [(%(filename)s:%(lineno)3s)] [%(levelname)s] %(message)s")
 
+    
     if filepath and not any([isinstance(handler, logging.FileHandler) for handler in logger.handlers]):
+        os.makedirs(os.path.dirname(filepath),exist_ok=True)
         file_handler = logging.FileHandler(filepath)
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
