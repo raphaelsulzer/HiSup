@@ -5,7 +5,13 @@ from .hrnet18v2 import HighResolutionNet as HRNet18v2
 from .multi_task_head import MultitaskHead
 from .resnetunet101 import UNetResNetBackbone as ResNetUNet
 import os
-import logging
+import logging 
+
+logger = logging.getLogger("HiSup")
+
+
+from .point_encoder_backbone import PointCloudEncoder
+
 @MODELS.register("HRNet48v2")
 def build_hrnet48(cfg):
     head_size = cfg.MODEL.HEAD_SIZE
@@ -19,9 +25,9 @@ def build_hrnet48(cfg):
     if not os.path.isfile(pretrained):
         raise FileNotFoundError(pretrained)
     else:
-        print(f"Loading pretrained model from {pretrained}")
+        logger.info(f"Loading pretrained weights from {pretrained}")
     model.init_weights(pretrained=pretrained)
-    print('INFO:build hrnet-w48-v2 backbone')
+    logger.info('INFO:build hrnet-w48-v2 backbone')
     return model
 
 @MODELS.register("HRNet32v2")
@@ -37,7 +43,7 @@ def build_hrnet32(cfg):
     if not os.path.isfile(pretrained):
         raise FileNotFoundError(pretrained)
     model.init_weights(pretrained=pretrained)
-    print('INFO:build hrnet-w32-v2 backbone')
+    logger.info('INFO:build hrnet-w32-v2 backbone')
     return model
 
 @MODELS.register("HRNet18v2")
@@ -53,7 +59,7 @@ def build_hrnet18(cfg):
     if not os.path.isfile(pretrained):
         raise FileNotFoundError(pretrained)
     model.init_weights(pretrained=pretrained)
-    print('INFO:build hrnet-w18-v2 backbone')
+    logger.info('INFO:build hrnet-w18-v2 backbone')
 
     return model
 
@@ -67,7 +73,7 @@ def build_resunet101(cfg):
                        head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
                        num_class = num_class)
 
-    print('INFO:build ResnetUnet101 backbone')
+    logger.info('INFO:build ResnetUnet101 backbone')
     return model
 
 def build_image_backbone(cfg):
@@ -78,3 +84,21 @@ def build_image_backbone(cfg):
 
 
 
+def build_lidar_backbone(cfg):
+
+    logger.info('Build PointPillars backbone')
+
+    model = PointCloudEncoder(cfg)
+    pretrained = cfg.MODEL.LIDAR_BACKBONE_WEIGHTS
+    
+    if pretrained:
+        pretrained = os.path.abspath(pretrained)
+        if not os.path.isfile(pretrained):
+            raise FileNotFoundError(pretrained)
+        else:
+            logger.info(f"Loading pretrained weights from {pretrained}")
+        model.init_weights(pretrained=pretrained)
+    else:
+        logger.info(f"No pretrained weights found for PointCloudEncoder")
+
+    return model

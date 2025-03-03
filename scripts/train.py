@@ -13,12 +13,12 @@ from tqdm import tqdm
 from collections import defaultdict
 
 from hisup.config import cfg
-from hisup.detector_both import MultiModalBuildingDetector
-from hisup.detector_lidar import LiDARBuildingDetector
-from hisup.detector_images import ImageBuildingDetector
+from hisup.model.detector_both import MultiModalBuildingDetector
+from hisup.model.detector_lidar import LiDARBuildingDetector
+from hisup.model.detector_images import ImageBuildingDetector
 from hisup.dataset import build_train_dataset, build_val_dataset
 from hisup.utils.comm import to_single_device
-from hisup.solver import make_lr_scheduler, make_optimizer
+from hisup.model.solver import make_lr_scheduler, make_optimizer
 from hisup.utils.logger import make_logger
 from hisup.utils.miscellaneous import save_config
 from hisup.utils.metric_logger import MetricLogger
@@ -237,7 +237,7 @@ def train(cfg):
     
     optimizer = make_optimizer(cfg,model)
     # scheduler = make_lr_scheduler(cfg,optimizer)    
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=cfg.SOLVER.PATIENCE)
     
     loss_reducer = LossReducer(cfg)
     
@@ -318,8 +318,8 @@ def train(cfg):
                          it,len(train_dataset),
                          scheduler.get_last_lr()[0])
 
-            # if it % 20 == 0 and it > 0:
-            #     break
+            if it % 40 == 0 and it > 0:
+                break
 
         outfile = osp.join(cfg.OUTPUT_DIR,'validation','validation_{:05d}.json'.format(epoch))
         os.makedirs(osp.dirname(outfile),exist_ok=True)
@@ -381,7 +381,7 @@ if __name__ == "__main__":
     add_args_to_cfg(cfg,args)
 
     cfg.RUN_GROUP = "v1_interior_appended_to_exterior"
-    cfg.RUN_NAME = "v1_lidar_LROnP"
+    cfg.RUN_NAME = "v1_both_lidarPT"
     cfg.OUTPUT_DIR = os.path.abspath(osp.join(cfg.OUTPUT_DIR, cfg.RUN_NAME))
 
     cfg.freeze()
@@ -389,7 +389,7 @@ if __name__ == "__main__":
     if not "debug" in cfg.OUTPUT_DIR:
         check_path(cfg.OUTPUT_DIR)
 
-    logger = make_logger('Training', filepath=osp.join(cfg.OUTPUT_DIR,'train.log'))
+    logger = make_logger('HiSup', filepath=osp.join(cfg.OUTPUT_DIR,'train.log'))
     logger.info(args)
     logger.info("Loaded configuration file {}".format(args.config_file))
 
