@@ -1,4 +1,4 @@
-from hisup.detector_default import *
+from hisup.model.detector_default import *
 from hisup.utils.polygon import generate_polygon
 from hisup.utils.polygon import get_pred_junctions
 from hisup.backbones.build import build_image_backbone
@@ -13,27 +13,6 @@ class ImageBuildingDetector(BuildingDetector):
         self.image_backbone = build_image_backbone(cfg)
         self.backbone_name = cfg.MODEL.NAME
 
-        self.encoder = Encoder(cfg)
-
-        self.pred_height = cfg.DATASETS.TARGET.HEIGHT
-        self.pred_width = cfg.DATASETS.TARGET.WIDTH
-        self.origin_height = cfg.DATASETS.ORIGIN.HEIGHT
-        self.origin_width = cfg.DATASETS.ORIGIN.WIDTH
-
-        dim_in = cfg.MODEL.OUT_FEATURE_CHANNELS
-        self.mask_head = self._make_conv(dim_in, dim_in, dim_in)
-        self.jloc_head = self._make_conv(dim_in, dim_in, dim_in)
-        self.afm_head = self._make_conv(dim_in, dim_in, dim_in)
-
-        self.a2m_att = ECA(dim_in)
-        self.a2j_att = ECA(dim_in)
-
-        self.mask_predictor = self._make_predictor(dim_in, 2)
-        self.jloc_predictor = self._make_predictor(dim_in, 3)
-        self.afm_predictor = self._make_predictor(dim_in, 2)
-
-        self.refuse_conv = self._make_conv(2, dim_in//2, dim_in)
-        self.final_conv = self._make_conv(dim_in*2, dim_in, 2)
     
     def forward(self, images, points, annotations = None):
         if self.training:
@@ -44,7 +23,7 @@ class ImageBuildingDetector(BuildingDetector):
 
 
     def forward_common(self,images,annotations=None):
-        targets, _ = self.encoder(annotations)
+        targets, _ = self.annotation_encoder(annotations)
         features = self.image_backbone(images)
         outputs = self.image_backbone.head(features)
 

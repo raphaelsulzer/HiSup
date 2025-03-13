@@ -1,1 +1,1 @@
-from .build import build_image_backbone
+from .build import build_image_backbone, build_lidar_backbone

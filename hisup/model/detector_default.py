@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from math import log
 from torch import nn
-from hisup.encoder import Encoder
+from hisup.model.encoder import Encoder
 from hisup.utils.polygon import generate_polygon
 from hisup.utils.polygon import get_pred_junctions
 from skimage.measure import label, regionprops
@@ -59,11 +59,9 @@ class ECA(nn.Module):
 
 class BuildingDetector(nn.Module):
     def __init__(self, cfg):
-        super(BuildingDetector, self).__init__()
+        super().__init__()
 
-        self.test_inria = 'inria' in cfg.DATASETS.TEST[0]
-
-        self.encoder = Encoder(cfg)
+        self.annotation_encoder = Encoder(cfg)
 
         self.pred_height = cfg.DATASETS.TARGET.HEIGHT
         self.pred_width = cfg.DATASETS.TARGET.WIDTH
@@ -85,7 +83,6 @@ class BuildingDetector(nn.Module):
         self.refuse_conv = self._make_conv(2, dim_in//2, dim_in)
         self.final_conv = self._make_conv(dim_in*2, dim_in, 2)
 
-        self.train_step = 0
         
 
     
