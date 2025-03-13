@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from pointpillars.model import PillarLayer, PillarEncoder, Backbone, Neck
 
-from .bn_helper import BatchNorm2d, BatchNorm2d_class, relu_inplace
+from .bn_helper import BatchNorm2d_class
 from hisup.backbones.multi_task_head import MultitaskHead
 
 
