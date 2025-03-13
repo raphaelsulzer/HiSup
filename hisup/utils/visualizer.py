@@ -63,7 +63,7 @@ def viz_inria(image, polygons, alpha=0.5, linewidth=12, markersize=45, outfile=N
     plt.imshow(image)
     for n, poly in enumerate(polygons):
         poly_color = colormap[n%num_color]
-        if poly.type == 'MultiPolygon':
+        if poly.geom_type == 'MultiPolygon':
             for p in poly:
                 patch = PolygonPatch(p.buffer(0), ec=poly_color, fc=poly_color, alpha=alpha, linewidth=linewidth)
                 plt.gca().add_patch(patch)
@@ -76,11 +76,6 @@ def viz_inria(image, polygons, alpha=0.5, linewidth=12, markersize=45, outfile=N
                         juncs = np.array(inter.coords[:-1])
                         plt.plot(juncs[:,0], juncs[:,1], color=poly_color, marker='.', markersize=markersize, linestyle='none')
         else:
-            # try:
-            #     patch = PolygonPatch(poly.buffer(0), ec=poly_color, fc=poly_color, alpha=alpha, linewidth=linewidth)
-            #     plt.gca().add_patch(patch)
-            # except TypeError:
-            #     plt.gca().add_patch(Patches.Polygon(poly.exterior.coords[:-1], fill=True, ec=poly_color, fc=poly_color, linewidth=linewidth, alpha=alpha))
             plt.gca().add_patch(Patches.Polygon(poly.exterior.coords[:-1], fill=False, ec=poly_color, linewidth=linewidth))
             juncs = np.array(poly.exterior.coords[:-1])
             plt.plot(juncs[:,0], juncs[:,1], color=poly_color, marker='.', markersize=markersize, linestyle='none')
@@ -93,7 +88,7 @@ def viz_inria(image, polygons, alpha=0.5, linewidth=12, markersize=45, outfile=N
     if outfile is not None:
         os.makedirs(os.path.dirname(outfile), exist_ok=True)
         plt.savefig(outfile, bbox_inches='tight', pad_inches=0.0)
-    plt.show()
+    plt.show(block=True)
     # plt.clf()
 
 
