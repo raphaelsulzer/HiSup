@@ -22,8 +22,7 @@ from hisup.utils.polygon import juncs_in_bbox
 from shapely.geometry import Polygon
 from skimage.measure import label, regionprops
 
-from lidarpoly_dataloader.utils.coco import generate_coco_ann, generate_coco_mask
-
+from lidar_poly_dataset.utils import generate_coco_ann, generate_coco_mask
 
 class TestPipeline():
     def __init__(self, cfg, eval_type='coco_iou', split='test'):

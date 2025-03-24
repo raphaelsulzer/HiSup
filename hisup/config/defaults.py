@@ -1,5 +1,5 @@
 from yacs.config import CfgNode as CN
-from .models import MODELS
+from .model import MODELS
 from .dataset import DATASETS
 from .solver import SOLVER
 cfg = CN()
